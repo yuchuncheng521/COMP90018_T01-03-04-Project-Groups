@@ -1,0 +1,6 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- The actual Material theming happens in Kotlin (ui/theme/Theme.kt) via Compose.
+         This base theme just prevents the system from applying an ActionBar / default styling
+         before Compose content is set, and defines the splash background. -->
+    <style name="Theme.Knot" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
