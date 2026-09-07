@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "573898506078",
+    "project_id": "knot-96401",
+    "storage_bucket": "knot-96401.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:573898506078:android:79d2ecdc58ed54233459cf",
+        "android_client_info": {
+          "package_name": "com.knot.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXVKMVtfk7q0Z2W6YJlg1IKLWF5S9AyT8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

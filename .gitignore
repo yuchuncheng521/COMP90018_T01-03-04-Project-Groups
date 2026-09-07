@@ -1,21 +1,17 @@
 *.iml
 .gradle/
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
+local.properties
+
+**/build/
 /captures
 .externalNativeBuild
 .cxx
-local.properties
 
-# Firebase / secrets — never commit your real config
-google-services.json
-
-# Android Studio generated files
+.idea/caches
+.idea/libraries
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.DS_Store
 *.hprof
