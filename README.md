@@ -16,15 +16,6 @@ behind a login/sign-up flow, matching the MVP described in the COMP90018 project
 - Bottom navigation between the 3 main screens, Material 3 theming with a soft/neutral
   palette (per the project plan's UI Appeal guidelines).
 
-## ⚠️ Backend note
-
-This base code stubs the backend with **Firebase Auth + Firestore**, since that's what was
-asked for. Your submitted project plan (`Mobile Computing.pdf`) actually specifies
-**Supabase** (Supabase Auth + Supabase Realtime + Postgres) for Connectivity and Technical
-Depth. If you want the grading criteria to line up with what you build, swap
-`AuthRepository` / `GroupsRepository` / `ActivitiesRepository` in `data/` for Supabase's
-Kotlin client (`io.github.jan-tennert.supabase`) — the ViewModels and UI don't need to
-change, since they only depend on the repository's public functions.
 
 ## Project structure
 
