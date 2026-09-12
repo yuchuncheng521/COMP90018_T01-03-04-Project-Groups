@@ -24,7 +24,9 @@ import com.knot.app.ui.settings.AccountSettingsViewModel
 @Composable
 fun KnotNavHost() {
     val navController = rememberNavController()
-    val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
+    val startDestination = RootGraph.MAIN // Temporarily skip authentication and go directly to the main app for testing
+
+    //val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
 
     NavHost(navController = navController, startDestination = startDestination) {
 
