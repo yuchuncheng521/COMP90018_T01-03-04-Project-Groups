@@ -53,7 +53,7 @@ import com.knot.app.ui.theme.KnotTheme
 private fun LoginScreenPreview() {
     KnotTheme {
         LoginScreen(
-            viewModel = AuthViewModel(), // see note below if this line doesn't compile/crashes the preview
+            viewModel = AuthViewModel(),
             onLoginSuccess = {},
             onNavigateToSignUp = {}
         )
@@ -91,7 +91,7 @@ private fun LoginScreenPreview() {
                     painter = painterResource(R.drawable.knot_blue),
                     contentDescription = null,
                     modifier = Modifier
-                        .size(160.dp)
+                        .size(200.dp)
                         .align(Alignment.CenterHorizontally)
                 )
                 Text(
