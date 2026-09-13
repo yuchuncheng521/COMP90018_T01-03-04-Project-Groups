@@ -15,10 +15,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.R
-import com.knot.app.ui.theme.KnotRed
 import com.knot.app.ui.theme.KnotCream
 import androidx.compose.ui.tooling.preview.Preview
 import com.knot.app.ui.theme.JudsonFontFamily
+import com.knot.app.ui.theme.KnotBlue
 import com.knot.app.ui.theme.KnotTheme
 
 @Preview(showBackground = true)
@@ -31,23 +31,26 @@ fun BrandedLoadingScreenPreview() {
 @Composable
 fun BrandedLoadingScreen() {
     Box(
-        modifier = Modifier.fillMaxSize().background(KnotRed),
+        modifier = Modifier.fillMaxSize().background(KnotBlue),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.offset(y = (-20).dp)
+            modifier = Modifier.offset(y = (-80).dp)
         ) {
 
             Image(
                 painter = painterResource(R.drawable.knot_logo),
                 contentDescription = null,
-                modifier = Modifier.size(180.dp)
+                modifier = Modifier
+                    .size(200.dp)
+                    .offset(x = 12.dp)
+
             )
             Text(
                 text = "Knot",
                 fontFamily = JudsonFontFamily,
-                fontSize = 34.sp,
+                fontSize =52.sp,
                 color = KnotCream
             )
         }

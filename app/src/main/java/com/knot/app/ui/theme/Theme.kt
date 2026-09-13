@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColors = lightColorScheme(
-    primary = KnotClay,
+    primary = KnotDarkBrown,
     onPrimary = KnotCream,
     primaryContainer = KnotSand,
     onPrimaryContainer = KnotInk,

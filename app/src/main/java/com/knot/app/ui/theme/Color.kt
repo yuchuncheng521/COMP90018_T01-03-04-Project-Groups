@@ -16,3 +16,6 @@ val KnotDarkBackground = Color(0xFF1C1A18)
 val KnotDarkSurface = Color(0xFF272320)
 
 val KnotRed = Color(0xFF8C2E30)
+val KnotDarkBrown = Color(0xFF3C251A)
+
+val KnotBlue = Color(0xFF9CB5C0)
