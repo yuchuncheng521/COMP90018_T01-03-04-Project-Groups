@@ -54,13 +54,20 @@ import com.knot.app.ui.camera.CameraScreen
 import com.knot.app.ui.components.P2PAlertBanner
 import kotlinx.coroutines.launch
 import java.io.File
-
+import android.media.MediaPlayer
+import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.viewinterop.AndroidView
+import com.knot.app.data.MediaUploadRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivitiesScreen(
     viewModel: ActivitiesViewModel,
     onActivityClick: (ActivityItem) -> Unit = {}
+
 ) {
     val uiState = viewModel.uiState
     val context = LocalContext.current
@@ -78,9 +85,17 @@ fun ActivitiesScreen(
     // Location
     val locationManager = remember { LocationManager(context) }
 
+
+    // Firebase media upload
+    val mediaUploadRepository = remember {
+        MediaUploadRepository()
+    }
+
     var currentLocationText by remember {
         mutableStateOf<String?>(null)
     }
+
+
 
     // Reusable function for getting the current location
     fun updateCurrentLocation() {
@@ -135,6 +150,21 @@ fun ActivitiesScreen(
                 selectedPhotoPath = photoPath
                 showCamera = false
                 updateCurrentLocation()
+
+                coroutineScope.launch {
+                    try {
+                        val downloadUrl =
+                            mediaUploadRepository.uploadMedia(
+                                localFilePath = photoPath,
+                                folderName = "photos"
+                            )
+
+                        println("Photo uploaded successfully: $downloadUrl")
+
+                    } catch (e: Exception) {
+                        println("Photo upload failed: ${e.message}")
+                    }
+                }
             },
             onVideoSelected = { videoPath ->
                 selectedVideoPath = videoPath
@@ -247,6 +277,11 @@ fun ActivitiesScreen(
                     Column {
                         Text("Selected video")
 
+                        VideoPreview(
+                            videoPath = selectedVideoPath!!
+                        )
+
+
                         Text(
                             text = File(selectedVideoPath!!).name,
                             style = MaterialTheme.typography.bodyMedium
@@ -294,6 +329,9 @@ fun ActivitiesScreen(
                         Text(
                             text = File(selectedAudioPath!!).name,
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                        AudioPreview(
+                            audioPath = selectedAudioPath!!
                         )
 
                         Button(
@@ -500,6 +538,80 @@ private fun ActivityCard(
                     )
                 }
             }
+        }
+    }
+}
+@Composable
+private fun VideoPreview(
+    videoPath: String
+) {
+    val context = LocalContext.current
+
+    AndroidView(
+        factory = { ctx ->
+            VideoView(ctx).apply {
+
+                val mediaController = MediaController(ctx)
+                mediaController.setAnchorView(this)
+
+                setMediaController(mediaController)
+
+                setVideoURI(
+                    Uri.fromFile(
+                        File(videoPath)
+                    )
+                )
+
+                setOnPreparedListener { mediaPlayer ->
+                    mediaPlayer.isLooping = false
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+    )
+}
+@Composable
+private fun AudioPreview(
+    audioPath: String
+) {
+    val context = LocalContext.current
+
+    val mediaPlayer = remember(audioPath) {
+        MediaPlayer().apply {
+            setDataSource(audioPath)
+            prepare()
+        }
+    }
+
+    var isPlaying by remember {
+        mutableStateOf(false)
+    }
+
+    Button(
+        onClick = {
+            if (isPlaying) {
+                mediaPlayer.pause()
+                isPlaying = false
+            } else {
+                mediaPlayer.start()
+                isPlaying = true
+            }
+        }
+    ) {
+        Text(
+            if (isPlaying) {
+                "Pause Audio"
+            } else {
+                "Play Audio"
+            }
+        )
+    }
+
+    DisposableEffect(mediaPlayer) {
+        onDispose {
+            mediaPlayer.release()
         }
     }
 }
