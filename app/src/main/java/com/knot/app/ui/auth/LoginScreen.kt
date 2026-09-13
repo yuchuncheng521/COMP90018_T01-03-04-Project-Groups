@@ -41,7 +41,8 @@ import com.knot.app.model.UserAccount
 fun LoginScreen(
     viewModel: AuthViewModel,
     onLoginSuccess: (UserAccount) -> Unit,
-    onNavigateToSignUp: () -> Unit
+    onNavigateToSignUp: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit = {}
 ) {
     val uiState = viewModel.uiState
     var email by remember { mutableStateOf("") }
@@ -98,6 +99,13 @@ fun LoginScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+            TextButton(
+                onClick = onNavigateToForgotPassword,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text("Forgot password?")
             }
 
             uiState.errorMessage?.let { message ->

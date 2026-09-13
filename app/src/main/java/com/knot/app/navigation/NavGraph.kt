@@ -13,6 +13,7 @@ import com.knot.app.data.AuthRepository
 import com.knot.app.ui.activities.ActivitiesScreen
 import com.knot.app.ui.activities.ActivitiesViewModel
 import com.knot.app.ui.auth.AuthViewModel
+import com.knot.app.ui.auth.ForgotPasswordScreen
 import com.knot.app.ui.auth.LoginScreen
 import com.knot.app.ui.auth.SignUpScreen
 import com.knot.app.ui.components.KnotBottomNavBar
@@ -65,6 +66,10 @@ private fun AuthNavHost(onAuthenticated: () -> Unit) {
                 onNavigateToSignUp = {
                     authViewModel.clearError()
                     authNavController.navigate(AuthScreen.SignUp.route)
+                },
+                onNavigateToForgotPassword = {
+                    authViewModel.clearError()
+                    authNavController.navigate(AuthScreen.ForgotPassword.route)
                 }
             )
         }
@@ -73,6 +78,15 @@ private fun AuthNavHost(onAuthenticated: () -> Unit) {
                 viewModel = authViewModel,
                 onSignUpSuccess = { onAuthenticated() },
                 onNavigateToLogin = {
+                    authViewModel.clearError()
+                    authNavController.popBackStack()
+                }
+            )
+        }
+        composable(AuthScreen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                viewModel = authViewModel,
+                onNavigateBack = {
                     authViewModel.clearError()
                     authNavController.popBackStack()
                 }

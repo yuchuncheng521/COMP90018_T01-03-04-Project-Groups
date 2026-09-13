@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 sealed class AuthScreen(val route: String) {
     object Login : AuthScreen("login")
     object SignUp : AuthScreen("sign_up")
+    object ForgotPassword : AuthScreen("forgot_password")
 }
 
 /** Main app routes, each shown with the bottom navigation bar. */
