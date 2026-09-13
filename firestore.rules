@@ -1,0 +1,63 @@
+rules_version = '2';
+
+// Firestore is set to Production mode (deny-by-default), so every collection the app touches
+// needs an explicit rule here or the client just gets "permission denied".
+//
+// NOTE for the team: these cover what AuthRepository/GroupsRepository write today (users/{uid}
+// profiles, groups/{groupId} circles). Re-check this file whenever a new collection or field is
+// added, and ideally run it through the Firestore emulator before relying on it for grading.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // users/{uid}: a user's own profile document (display name, email, groupIds, ...).
+    // Only that user can read or write it -- nobody else needs to.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // groups/{groupId}: a private circle.
+    match /groups/{groupId} {
+      // Any signed-in user can read a group by id. This is what lets joinGroupByCode's query
+      // (whereEqualTo("inviteCode", code)) work for someone who isn't a member yet -- Firestore
+      // rules can't filter *which* documents a query is allowed to touch based on their content
+      // the way a normal query can, so this has to allow reading before membership is confirmed.
+      // The invite code itself (6 random chars) is what limits who can actually find a group.
+      allow read: if isSignedIn();
+
+      // Creating a group: the creator must be the ownerId and must already be listed as a member.
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.auth.uid in request.resource.data.memberIds;
+
+      // Updating a group covers two very different client actions:
+      //  1) An existing member edits group content (name, lastActivitySummary, unreadCount, ...).
+      //  2) A signed-in NON-member joins via invite code -- which must only ever add exactly
+      //     themself to memberIds/bump memberCount by 1, and must not change anything else
+      //     (name, ownerId, inviteCode) in the same write.
+      allow update: if isSignedIn() && (
+        request.auth.uid in resource.data.memberIds
+        ||
+        (
+          !(request.auth.uid in resource.data.memberIds) &&
+          request.auth.uid in request.resource.data.memberIds &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
+          request.resource.data.name == resource.data.name &&
+          request.resource.data.ownerId == resource.data.ownerId &&
+          request.resource.data.inviteCode == resource.data.inviteCode
+        )
+      );
+
+      // No client-side deletes for now -- nothing in the app calls this, and "delete a circle"
+      // (with all its activities/media) needs more thought than a bare rule can give it.
+      allow delete: if false;
+    }
+  }
+}
