@@ -24,9 +24,12 @@ import com.knot.app.ui.settings.AccountSettingsViewModel
 @Composable
 fun KnotNavHost() {
     val navController = rememberNavController()
-    val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
-
+    val startDestination = RootGraph.MAIN
     NavHost(navController = navController, startDestination = startDestination) {
+
+//    val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
+//
+//    NavHost(navController = navController, startDestination = startDestination) {
 
         // ---- Auth flow: Login / Sign up, no bottom nav ----
         composable(RootGraph.AUTH) {

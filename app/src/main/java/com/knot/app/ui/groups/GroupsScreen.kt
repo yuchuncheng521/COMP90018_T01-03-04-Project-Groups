@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -97,7 +99,11 @@ fun GroupsScreen(
     Scaffold(
         containerColor = KnotCream,
         topBar = {
-            TopAppBar(title = { Text("Your groups")},
+            TopAppBar(title = {
+                Text("Groups",
+                fontSize = 38.sp
+
+                ) },
                     colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = KnotCream,
                     scrolledContainerColor = KnotCream
@@ -139,15 +145,6 @@ private fun EmptyGroupsState(padding: PaddingValues) {
             .fillMaxSize()
             .padding(padding)
     ) {
-        Text(
-            text = "Groups",
-            fontFamily = JudsonFontFamily,
-            fontSize = 34.sp,
-            lineHeight = 34.sp,
-            color = KnotDarkBrown,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 30.dp)
-        )
-
 
         Column(
             modifier = Modifier
@@ -155,7 +152,7 @@ private fun EmptyGroupsState(padding: PaddingValues) {
                 .weight(1f)
                 .padding(32.dp, vertical =200.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-//            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center
         ) {
 
             Icon(
@@ -169,11 +166,7 @@ private fun EmptyGroupsState(padding: PaddingValues) {
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(top = 16.dp)
             )
-            Text(
-                text = "Create a private circle with your loved ones to start sharing weekly memories.",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+
         }
     }
 }
@@ -184,96 +177,69 @@ private fun GroupsList(
     groups: List<Group>,
     onGroupClick: (Group) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-    ) {
-        Text(
-            text = "Groups",
-            fontFamily = JudsonFontFamily,
-            fontSize = 34.sp,
-            lineHeight = 34.sp,
-            color = KnotDarkBrown,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 30.dp)
-        )
 
         LazyColumn(
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f)
-
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
             items(groups, key = { it.id }) { group ->
                 GroupCard(group = group, onClick = { onGroupClick(group) })
             }
         }
     }
-}
 
-    @Composable
-    private fun GroupCard(group: Group, onClick: () -> Unit) {
-        Card(
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+@Composable
+private fun GroupCard(group: Group, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Text(
+                text = group.name,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text(
+                text = "${group.memberCount} Members",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(top = 12.dp)
             ) {
-                GroupAvatar(initial = group.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?")
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 16.dp)
-                ) {
-                    Text(
-                        text = group.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "${group.memberCount} members",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    if (group.lastActivitySummary.isNotBlank()) {
-                        Text(
-                            text = group.lastActivitySummary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-
-                if (group.unreadCount > 0) {
-                    Badge { Text(group.unreadCount.toString()) }
+                items(group.memberCount) {
+                    MemberAvatarPlaceholder()
                 }
             }
         }
     }
+}
 
-    @Composable
-    private fun GroupAvatar(initial: String) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = initial,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+@Composable
+private fun MemberAvatarPlaceholder() {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .background(
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                CircleShape
             )
-        }
-    }
+    )
+
+}
 
 
