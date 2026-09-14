@@ -3,4 +3,13 @@
          This base theme just prevents the system from applying an ActionBar / default styling
          before Compose content is set, and defines the splash background. -->
     <style name="Theme.Knot" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Knot.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/knot_splash_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.Knot</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
 </resources>

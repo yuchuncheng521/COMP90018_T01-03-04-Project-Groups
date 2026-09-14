@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 // Soft, neutral palette so user-generated photos/content stay the visual focus
 // (per the project plan's UI Appeal section).
-val KnotCream = Color(0xFFFBF7F2)
+val KnotCream = Color(0xFFFEF9F6)
 val KnotSand = Color(0xFFF0E7DA)
 val KnotClay = Color(0xFFC97C5D)
 val KnotClayDark = Color(0xFFA85F45)
@@ -14,3 +14,8 @@ val KnotAlert = Color(0xFFD98241)
 
 val KnotDarkBackground = Color(0xFF1C1A18)
 val KnotDarkSurface = Color(0xFF272320)
+
+val KnotRed = Color(0xFF8C2E30)
+val KnotDarkBrown = Color(0xFF3C251A)
+
+val KnotBlue = Color(0xFF9CB5C0)

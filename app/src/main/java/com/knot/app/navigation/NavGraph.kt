@@ -6,9 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.knot.app.data.AuthRepository
 import com.knot.app.ui.activities.ActivitiesScreen
 import com.knot.app.ui.activities.ActivitiesViewModel
@@ -16,6 +18,7 @@ import com.knot.app.ui.auth.AuthViewModel
 import com.knot.app.ui.auth.LoginScreen
 import com.knot.app.ui.auth.SignUpScreen
 import com.knot.app.ui.components.KnotBottomNavBar
+import com.knot.app.ui.groups.GroupDetailScreen
 import com.knot.app.ui.groups.GroupsScreen
 import com.knot.app.ui.groups.GroupsViewModel
 import com.knot.app.ui.settings.AccountSettingsScreen
@@ -28,6 +31,9 @@ fun KnotNavHost() {
     val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
 
     NavHost(navController = navController, startDestination = startDestination) {
+//
+//    val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
+//    NavHost(navController = navController, startDestination = startDestination) {
 
         // ---- Auth flow: Login / Sign up, no bottom nav ----
         composable(RootGraph.AUTH) {
@@ -96,7 +102,22 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
         ) {
             composable(MainScreen.Groups.route) {
                 val groupsViewModel: GroupsViewModel = viewModel()
-                GroupsScreen(viewModel = groupsViewModel)
+                GroupsScreen(
+                    viewModel = groupsViewModel,
+                    onGroupClick = { group ->
+                        mainNavController.navigate("groupDetail/${group.id}")
+                    }
+                )
+            }
+            composable(
+                route = "groupDetail/{groupId}",
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+                GroupDetailScreen(
+                    groupId = groupId,
+                    onBackClick = { mainNavController.popBackStack() }
+                )
             }
             composable(MainScreen.Activities.route) {
                 val activitiesViewModel: ActivitiesViewModel = viewModel()
