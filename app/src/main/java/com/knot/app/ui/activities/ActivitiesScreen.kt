@@ -60,7 +60,6 @@ import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.viewinterop.AndroidView
-import com.knot.app.data.MediaUploadRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,11 +84,6 @@ fun ActivitiesScreen(
     // Location
     val locationManager = remember { LocationManager(context) }
 
-
-    // Firebase media upload
-    val mediaUploadRepository = remember {
-        MediaUploadRepository()
-    }
 
     var currentLocationText by remember {
         mutableStateOf<String?>(null)
@@ -151,20 +145,7 @@ fun ActivitiesScreen(
                 showCamera = false
                 updateCurrentLocation()
 
-                coroutineScope.launch {
-                    try {
-                        val downloadUrl =
-                            mediaUploadRepository.uploadMedia(
-                                localFilePath = photoPath,
-                                folderName = "photos"
-                            )
 
-                        println("Photo uploaded successfully: $downloadUrl")
-
-                    } catch (e: Exception) {
-                        println("Photo upload failed: ${e.message}")
-                    }
-                }
             },
             onVideoSelected = { videoPath ->
                 selectedVideoPath = videoPath
