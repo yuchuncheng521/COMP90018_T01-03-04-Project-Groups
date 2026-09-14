@@ -72,6 +72,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 
+
     // Coroutines <-> Firebase Task interop
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
@@ -84,6 +85,19 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    //camera
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
+    implementation("com.google.guava:guava:33.2.1-android")
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("androidx.camera:camera-video:1.3.4")
+
+    // Location
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
 
 }
