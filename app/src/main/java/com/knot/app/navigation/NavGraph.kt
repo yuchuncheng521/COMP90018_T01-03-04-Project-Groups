@@ -14,6 +14,8 @@ import androidx.navigation.navArgument
 import com.knot.app.data.AuthRepository
 import com.knot.app.ui.activities.ActivitiesScreen
 import com.knot.app.ui.activities.ActivitiesViewModel
+import com.knot.app.ui.activities.CreateQuestScreen
+import com.knot.app.ui.activities.QuestDetailScreen
 import com.knot.app.ui.auth.AuthViewModel
 import com.knot.app.ui.auth.LoginScreen
 import com.knot.app.ui.auth.SignUpScreen
@@ -121,7 +123,30 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             }
             composable(MainScreen.Activities.route) {
                 val activitiesViewModel: ActivitiesViewModel = viewModel()
-                ActivitiesScreen(viewModel = activitiesViewModel)
+                ActivitiesScreen(
+                    viewModel = activitiesViewModel,
+                    onActivityClick = { activity ->
+                        mainNavController.navigate("questDetail/${activity.id}")
+                    },
+                    onCreateClick = {
+                        mainNavController.navigate("createQuest")
+                    }
+                )
+            }
+            composable(
+                route = "questDetail/{activityId}",
+                arguments = listOf(navArgument("activityId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val activityId = backStackEntry.arguments?.getString("activityId") ?: return@composable
+                QuestDetailScreen(
+                    activityId = activityId,
+                    onBackClick = { mainNavController.popBackStack() }
+                )
+            }
+            composable("createQuest") {
+                CreateQuestScreen(
+                    onBackClick = { mainNavController.popBackStack() }
+                )
             }
             composable(MainScreen.Settings.route) {
                 val settingsViewModel: AccountSettingsViewModel = viewModel()

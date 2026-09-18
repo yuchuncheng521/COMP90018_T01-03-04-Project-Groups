@@ -1,10 +1,6 @@
 package com.knot.app.ui.activities
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +8,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,149 +27,35 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
-import com.knot.app.location.LocationManager
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
-import com.knot.app.permissions.PermissionManager
-import com.knot.app.ui.audio.AudioRecorderScreen
-import com.knot.app.ui.camera.CameraScreen
 import com.knot.app.ui.components.P2PAlertBanner
-import kotlinx.coroutines.launch
-import java.io.File
-import android.media.MediaPlayer
-import android.net.Uri
-import android.widget.MediaController
-import android.widget.VideoView
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.knot.app.ui.theme.KnotDarkBrown
+import com.knot.app.ui.theme.KnotCream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivitiesScreen(
     viewModel: ActivitiesViewModel,
-    onActivityClick: (ActivityItem) -> Unit = {}
-
+    onActivityClick: (ActivityItem) -> Unit = {},
+    onCreateClick: () -> Unit = {},
 ) {
     val uiState = viewModel.uiState
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    // Screen states
-    var showCamera by remember { mutableStateOf(false) }
-    var showAudioRecorder by remember { mutableStateOf(false) }
-
-    // Selected media
-    var selectedPhotoPath by remember { mutableStateOf<String?>(null) }
-    var selectedVideoPath by remember { mutableStateOf<String?>(null) }
-    var selectedAudioPath by remember { mutableStateOf<String?>(null) }
-
-    // Location
-    val locationManager = remember { LocationManager(context) }
-
-
-    var currentLocationText by remember {
-        mutableStateOf<String?>(null)
-    }
-
-
-
-    // Reusable function for getting the current location
-    fun updateCurrentLocation() {
-        coroutineScope.launch {
-            val location = locationManager.getCurrentLocation()
-
-            currentLocationText =
-                if (location != null) {
-                    "Lat: ${location.latitude}, Lng: ${location.longitude}"
-                } else {
-                    "Location unavailable"
-                }
-        }
-    }
-
-    // Camera permission
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            showCamera = true
-        }
-    }
-
-    // Microphone permission
-    val microphonePermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            showAudioRecorder = true
-        }
-    }
-
-    // Location permission
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-
-        val granted =
-            permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                    permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-
-        if (granted) {
-            updateCurrentLocation()
-        }
-    }
-
-    // Camera screen
-    if (showCamera) {
-        CameraScreen(
-            onPhotoSelected = { photoPath ->
-                selectedPhotoPath = photoPath
-                showCamera = false
-                updateCurrentLocation()
-
-
-            },
-            onVideoSelected = { videoPath ->
-                selectedVideoPath = videoPath
-                showCamera = false
-                updateCurrentLocation()
-            }
-        )
-
-        return
-    }
-
-    // Audio recorder screen
-    if (showAudioRecorder) {
-        AudioRecorderScreen(
-            onAudioSelected = { audioPath ->
-                selectedAudioPath = audioPath
-                showAudioRecorder = false
-                updateCurrentLocation()
-            }
-        )
-
-        return
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Your activities")
+                    Text("Your activities",
+                        fontSize = 38.sp)
                 }
             )
         }
@@ -203,159 +84,33 @@ fun ActivitiesScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-
-            // -------------------------
-            // Camera
-            // -------------------------
-
             item {
-                Button(
-                    onClick = {
-                        if (PermissionManager.hasCameraPermission(context)) {
-                            showCamera = true
-                        } else {
-                            cameraPermissionLauncher.launch(
-                                Manifest.permission.CAMERA
-                            )
-                        }
-                    }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("Open Camera")
-                }
-            }
-
-            // Selected photo
-            if (selectedPhotoPath != null) {
-                item {
-                    Column {
-                        Text("Selected photo")
-
-                        Image(
-                            painter = rememberAsyncImagePainter(
-                                model = File(selectedPhotoPath!!)
-                            ),
-                            contentDescription = "Selected photo",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(220.dp),
-                            contentScale = ContentScale.Crop
-                        )
-
-                        Button(
-                            onClick = {
-                                showCamera = true
-                            }
-                        ) {
-                            Text("Change Photo")
-                        }
+                    Button(
+                        onClick = { /* Already on Quests */ },
+                        modifier = Modifier.weight(1f),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = KnotDarkBrown.copy(alpha = 0.8f),
+                            contentColor = KnotCream
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text("QUESTS", fontWeight = FontWeight.Bold)
                     }
-                }
-            }
-
-            // Selected video
-            if (selectedVideoPath != null) {
-                item {
-                    Column {
-                        Text("Selected video")
-
-                        VideoPreview(
-                            videoPath = selectedVideoPath!!
-                        )
-
-
-                        Text(
-                            text = File(selectedVideoPath!!).name,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-
-                        Button(
-                            onClick = {
-                                showCamera = true
-                            }
-                        ) {
-                            Text("Change Video")
-                        }
+                    OutlinedButton(
+                        onClick = onCreateClick,
+                        modifier = Modifier.weight(1f),
+                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                            contentColor = KnotDarkBrown
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, KnotDarkBrown.copy(alpha = 0.5f))
+                    ) {
+                        Text("CREATE", fontWeight = FontWeight.Bold)
                     }
-                }
-            }
-
-            // -------------------------
-            // Audio
-            // -------------------------
-
-            item {
-                Button(
-                    onClick = {
-                        if (
-                            PermissionManager.hasMicrophonePermission(context)
-                        ) {
-                            showAudioRecorder = true
-                        } else {
-                            microphonePermissionLauncher.launch(
-                                Manifest.permission.RECORD_AUDIO
-                            )
-                        }
-                    }
-                ) {
-                    Text("Record Audio")
-                }
-            }
-
-            // Selected audio
-            if (selectedAudioPath != null) {
-                item {
-                    Column {
-                        Text("Selected audio")
-
-                        Text(
-                            text = File(selectedAudioPath!!).name,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        AudioPreview(
-                            audioPath = selectedAudioPath!!
-                        )
-
-                        Button(
-                            onClick = {
-                                showAudioRecorder = true
-                            }
-                        ) {
-                            Text("Change Audio")
-                        }
-                    }
-                }
-            }
-
-            // -------------------------
-            // Location
-            // -------------------------
-
-            item {
-                Button(
-                    onClick = {
-                        if (
-                            PermissionManager.hasLocationPermission(context)
-                        ) {
-                            updateCurrentLocation()
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        }
-                    }
-                ) {
-                    Text("Get Current Location")
-                }
-            }
-
-            if (currentLocationText != null) {
-                item {
-                    Text(
-                        text = "Your current location is: $currentLocationText"
-                    )
                 }
             }
 
@@ -519,80 +274,6 @@ private fun ActivityCard(
                     )
                 }
             }
-        }
-    }
-}
-@Composable
-private fun VideoPreview(
-    videoPath: String
-) {
-    val context = LocalContext.current
-
-    AndroidView(
-        factory = { ctx ->
-            VideoView(ctx).apply {
-
-                val mediaController = MediaController(ctx)
-                mediaController.setAnchorView(this)
-
-                setMediaController(mediaController)
-
-                setVideoURI(
-                    Uri.fromFile(
-                        File(videoPath)
-                    )
-                )
-
-                setOnPreparedListener { mediaPlayer ->
-                    mediaPlayer.isLooping = false
-                }
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-    )
-}
-@Composable
-private fun AudioPreview(
-    audioPath: String
-) {
-    val context = LocalContext.current
-
-    val mediaPlayer = remember(audioPath) {
-        MediaPlayer().apply {
-            setDataSource(audioPath)
-            prepare()
-        }
-    }
-
-    var isPlaying by remember {
-        mutableStateOf(false)
-    }
-
-    Button(
-        onClick = {
-            if (isPlaying) {
-                mediaPlayer.pause()
-                isPlaying = false
-            } else {
-                mediaPlayer.start()
-                isPlaying = true
-            }
-        }
-    ) {
-        Text(
-            if (isPlaying) {
-                "Pause Audio"
-            } else {
-                "Play Audio"
-            }
-        )
-    }
-
-    DisposableEffect(mediaPlayer) {
-        onDispose {
-            mediaPlayer.release()
         }
     }
 }
