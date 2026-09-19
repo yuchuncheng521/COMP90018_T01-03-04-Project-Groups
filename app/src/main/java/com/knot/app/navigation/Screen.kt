@@ -1,10 +1,6 @@
 package com.knot.app.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.knot.app.R
 
 /** Auth flow routes (no bottom nav). */
 sealed class AuthScreen(val route: String) {
@@ -13,10 +9,10 @@ sealed class AuthScreen(val route: String) {
 }
 
 /** Main app routes, each shown with the bottom navigation bar. */
-sealed class MainScreen(val route: String, val label: String, val icon: ImageVector) {
-    object Groups : MainScreen("groups", "Groups", Icons.Filled.Groups)
-    object Activities : MainScreen("activities", "Activities", Icons.Filled.Checklist)
-    object Settings : MainScreen("settings", "Account", Icons.Filled.Settings)
+sealed class MainScreen(val route: String, val label: String, val iconRes: Int) {
+    object Groups : MainScreen("groups", "Groups", R.drawable.nav_ic_groups)
+    object Activities : MainScreen("activities", "Activities", R.drawable.nav_ic_activities)
+    object Settings : MainScreen("settings", "Account", R.drawable.nav_ic_account)
 
     companion object {
         val bottomNavItems = listOf(Groups, Activities, Settings)
