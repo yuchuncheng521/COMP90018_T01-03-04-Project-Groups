@@ -23,6 +23,8 @@ import com.knot.app.ui.groups.GroupsScreen
 import com.knot.app.ui.groups.GroupsViewModel
 import com.knot.app.ui.settings.AccountSettingsScreen
 import com.knot.app.ui.settings.AccountSettingsViewModel
+import com.knot.app.ui.timeline.TimelineScreen
+import com.knot.app.ui.timeline.TimelineViewModel
 
 @Composable
 fun KnotNavHost() {
@@ -105,20 +107,55 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 GroupsScreen(
                     viewModel = groupsViewModel,
                     onGroupClick = { group ->
-                        mainNavController.navigate("groupDetail/${group.id}")
+                        mainNavController.navigate(GroupDetailScreenRoute.route(group.id, group.name))
                     }
                 )
             }
+
+            // ---- One group's months (the "album" covers screen) ----
             composable(
-                route = "groupDetail/{groupId}",
-                arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+                route = GroupDetailScreenRoute.ROUTE_PATTERN,
+                arguments = listOf(
+                    navArgument("groupId") { type = NavType.StringType },
+                    navArgument("groupName") { type = NavType.StringType }
+                )
             ) { backStackEntry ->
-                val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+                val groupId = backStackEntry.arguments?.getString("groupId").orEmpty()
+                val groupName = backStackEntry.arguments?.getString("groupName").orEmpty()
                 GroupDetailScreen(
                     groupId = groupId,
+                    onBackClick = { mainNavController.popBackStack() },
+                    onAlbumClick = {
+                        // Tapping a month opens that group's shared timeline.
+                        // TODO: once GroupDetailScreen exposes which month/week
+                        // range was tapped, pass it through so Timeline can
+                        // filter to that period instead of showing everything.
+                        mainNavController.navigate(
+                            TimelineScreenRoute.route(groupId, groupName)
+                        )
+                    }
+                )
+            }
+
+            // ---- Shared timeline (chronological feed) for one group ----
+            composable(
+                route = TimelineScreenRoute.ROUTE_PATTERN,
+                arguments = listOf(
+                    navArgument("groupId") { type = NavType.StringType },
+                    navArgument("groupName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val timelineViewModel: TimelineViewModel = viewModel()
+                TimelineScreen(
+                    groupId = backStackEntry.arguments?.getString("groupId").orEmpty(),
+                    groupName = backStackEntry.arguments?.getString("groupName").orEmpty(),
+                    viewModel = timelineViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
+
+
+
             composable(MainScreen.Activities.route) {
                 val activitiesViewModel: ActivitiesViewModel = viewModel()
                 ActivitiesScreen(viewModel = activitiesViewModel)
