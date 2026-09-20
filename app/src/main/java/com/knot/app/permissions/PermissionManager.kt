@@ -35,4 +35,30 @@ object PermissionManager {
 
         return fineLocationGranted || coarseLocationGranted
     }
+
+    fun hasNearbyPermissions(context: Context): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            val scanGranted =
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ) == PackageManager.PERMISSION_GRANTED
+
+            val connectGranted =
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) == PackageManager.PERMISSION_GRANTED
+
+            val advertiseGranted =
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_ADVERTISE
+                ) == PackageManager.PERMISSION_GRANTED
+
+            scanGranted && connectGranted && advertiseGranted
+        } else {
+            true
+        }
+    }
 }
