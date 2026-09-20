@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,10 +37,14 @@ import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.ui.components.P2PAlertBanner
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotCream
+
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
+import com.knot.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,8 +59,7 @@ fun ActivitiesScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Your activities",
-                        fontSize = 38.sp)
+                    Text("Activities", fontSize = 38.sp)
                 }
             )
         }
@@ -90,15 +94,15 @@ fun ActivitiesScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Button(
-                        onClick = { /* Already on Quests */ },
+                        onClick = { /* Already on Quests/Activities */ },
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = KnotDarkBrown.copy(alpha = 0.8f),
+                            containerColor = KnotDarkBrown,
                             contentColor = KnotCream
                         ),
                         shape = RoundedCornerShape(24.dp)
                     ) {
-                        Text("QUESTS", fontWeight = FontWeight.Bold)
+                        Text("ACTIVITIES", fontWeight = FontWeight.Bold)
                     }
                     OutlinedButton(
                         onClick = onCreateClick,
@@ -107,7 +111,7 @@ fun ActivitiesScreen(
                             contentColor = KnotDarkBrown
                         ),
                         shape = RoundedCornerShape(24.dp),
-                        border = androidx.compose.foundation.BorderStroke(2.dp, KnotDarkBrown.copy(alpha = 0.5f))
+                        border = androidx.compose.foundation.BorderStroke(2.dp, KnotDarkBrown)
                     ) {
                         Text("CREATE", fontWeight = FontWeight.Bold)
                     }
@@ -119,11 +123,9 @@ fun ActivitiesScreen(
             // -------------------------
 
             val alert = uiState.p2pAlert
+            val showP2pAlert = (alert != null && !uiState.p2pAlertDismissed)
 
-            if (
-                alert != null &&
-                !uiState.p2pAlertDismissed
-            ) {
+            if (showP2pAlert) {
                 item(
                     key = "p2p-alert"
                 ) {
@@ -131,7 +133,7 @@ fun ActivitiesScreen(
                         visible = true
                     ) {
                         P2PAlertBanner(
-                            alert = alert,
+                            alert = alert!!,
                             onRespond = {
                                 onActivityClick(alert)
                             },
@@ -185,7 +187,7 @@ fun ActivitiesScreen(
 private fun ActivityCard(
     activity: ActivityItem,
     onClick: () -> Unit,
-    onToggleComplete: () -> Unit
+    onToggleComplete: () -> Unit,
 ) {
     val isCompleted =
         activity.status == ActivityStatus.COMPLETED
@@ -195,7 +197,7 @@ private fun ActivityCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor =
-                MaterialTheme.colorScheme.surfaceVariant
+                MaterialTheme.colorScheme.surfaceVariant,
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -274,6 +276,13 @@ private fun ActivityCard(
                     )
                 }
             }
+
+            Icon(
+                painter = painterResource(id = R.drawable.right_arrow),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

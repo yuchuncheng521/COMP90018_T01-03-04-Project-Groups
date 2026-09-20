@@ -3,6 +3,7 @@ package com.knot.app.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -14,8 +15,8 @@ import androidx.navigation.navArgument
 import com.knot.app.data.AuthRepository
 import com.knot.app.ui.activities.ActivitiesScreen
 import com.knot.app.ui.activities.ActivitiesViewModel
-import com.knot.app.ui.activities.CreateQuestScreen
-import com.knot.app.ui.activities.QuestDetailScreen
+import com.knot.app.ui.activities.ActivityDetailScreen
+import com.knot.app.ui.activities.CreateActivityScreen
 import com.knot.app.ui.auth.AuthViewModel
 import com.knot.app.ui.auth.LoginScreen
 import com.knot.app.ui.auth.SignUpScreen
@@ -25,6 +26,9 @@ import com.knot.app.ui.groups.GroupsScreen
 import com.knot.app.ui.groups.GroupsViewModel
 import com.knot.app.ui.settings.AccountSettingsScreen
 import com.knot.app.ui.settings.AccountSettingsViewModel
+import com.knot.app.ui.settings.AppPreferencesScreen
+import com.knot.app.ui.settings.DeleteAccountScreen
+import com.knot.app.ui.settings.EditProfileScreen
 
 @Composable
 fun KnotNavHost() {
@@ -33,9 +37,6 @@ fun KnotNavHost() {
     val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
 
     NavHost(navController = navController, startDestination = startDestination) {
-//
-//    val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
-//    NavHost(navController = navController, startDestination = startDestination) {
 
         // ---- Auth flow: Login / Sign up, no bottom nav ----
         composable(RootGraph.AUTH) {
@@ -44,7 +45,7 @@ fun KnotNavHost() {
                     navController.navigate(RootGraph.MAIN) {
                         popUpTo(RootGraph.AUTH) { inclusive = true }
                     }
-                }
+                },
             )
         }
 
@@ -55,7 +56,7 @@ fun KnotNavHost() {
                     navController.navigate(RootGraph.AUTH) {
                         popUpTo(RootGraph.MAIN) { inclusive = true }
                     }
-                }
+                },
             )
         }
     }
@@ -126,25 +127,32 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 ActivitiesScreen(
                     viewModel = activitiesViewModel,
                     onActivityClick = { activity ->
-                        mainNavController.navigate("questDetail/${activity.id}")
+                        mainNavController.navigate("activityDetail/${activity.id}")
                     },
                     onCreateClick = {
-                        mainNavController.navigate("createQuest")
+                        mainNavController.navigate("createActivity")
                     }
                 )
             }
             composable(
-                route = "questDetail/{activityId}",
+                route = "activityDetail/{activityId}",
                 arguments = listOf(navArgument("activityId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val activityId = backStackEntry.arguments?.getString("activityId") ?: return@composable
-                QuestDetailScreen(
+                // Reuse the ViewModel from the Activities screen to share state
+                val parentEntry = remember(backStackEntry) {
+                    mainNavController.getBackStackEntry(MainScreen.Activities.route)
+                }
+                val activitiesViewModel: ActivitiesViewModel = viewModel(parentEntry)
+                
+                ActivityDetailScreen(
                     activityId = activityId,
+                    viewModel = activitiesViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
-            composable("createQuest") {
-                CreateQuestScreen(
+            composable("createActivity") {
+                CreateActivityScreen(
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
@@ -152,7 +160,32 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 val settingsViewModel: AccountSettingsViewModel = viewModel()
                 AccountSettingsScreen(
                     viewModel = settingsViewModel,
-                    onSignedOut = onSignedOut
+                    onSignedOut = onSignedOut,
+                    onProfileClick = { mainNavController.navigate("editProfile") },
+                    onAppPreferencesClick = { mainNavController.navigate("appPreferences") },
+                    onDeleteAccountClick = { mainNavController.navigate("deleteAccount") }
+                )
+            }
+            composable("editProfile") {
+                val settingsViewModel: AccountSettingsViewModel = viewModel()
+                EditProfileScreen(
+                    viewModel = settingsViewModel,
+                    onBackClick = { mainNavController.popBackStack() }
+                )
+            }
+            composable("appPreferences") {
+                val settingsViewModel: AccountSettingsViewModel = viewModel()
+                AppPreferencesScreen(
+                    viewModel = settingsViewModel,
+                    onBackClick = { mainNavController.popBackStack() }
+                )
+            }
+            composable("deleteAccount") {
+                val settingsViewModel: AccountSettingsViewModel = viewModel()
+                DeleteAccountScreen(
+                    viewModel = settingsViewModel,
+                    onBackClick = { mainNavController.popBackStack() },
+                    onDeleted = { onSignedOut() }
                 )
             }
         }

@@ -3,7 +3,7 @@ package com.knot.app.model
 /** The kind of activity being asked of the user. */
 enum class ActivityType {
     WEEKLY_PROMPT,
-    QUEST,
+    ACTIVITY,
     P2P_ALERT
 }
 
