@@ -1,56 +1,41 @@
 package com.knot.app.data
 
-import com.google.firebase.auth.FirebaseAuth
 import com.knot.app.model.UserAccount
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.flow.Flow
 
 /**
- * Wraps Firebase Authentication (email/password) behind a small suspend-friendly API.
- *
- * This is a STUB: it talks to the real FirebaseAuth SDK, but until a Firebase project +
- * google-services.json is wired up, calls will throw. Screens catch that and surface a
- * friendly error message rather than crashing, so the UI is fully navigable either way.
+ * Handles sign in, sign up, sign out, and password reset.
+ * This class doesn't talk to Firebase directly — [FirebaseAuthDataSource] and [UserProfileDataSource] do that.
+ * Keeping them separate makes it possible to test this class with fake data instead of a real Firebase connection.
  */
-class AuthRepository {
-
-    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+class AuthRepository(
+    private val authDataSource: FirebaseAuthDataSource = FirebaseAuthDataSourceImpl(),
+    private val profileDataSource: UserProfileDataSource = FirestoreUserProfileDataSource()
+) {
 
     val currentUser: UserAccount?
-        get() = auth.currentUser?.let {
-            UserAccount(
-                uid = it.uid,
-                displayName = it.displayName ?: it.email?.substringBefore("@") ?: "You",
-                email = it.email ?: "",
-                photoUrl = it.photoUrl?.toString()
-            )
-        }
+        get() = authDataSource.currentUser
 
     val isLoggedIn: Boolean
-        get() = auth.currentUser != null
+        get() = authDataSource.isLoggedIn
+
+    fun authStateFlow(): Flow<UserAccount?> = authDataSource.authStateFlow()
 
     suspend fun signIn(email: String, password: String): Result<UserAccount> = runCatching {
-        val result = auth.signInWithEmailAndPassword(email, password).await()
-        val user = result.user ?: error("Login failed: no user returned")
-        UserAccount(
-            uid = user.uid,
-            displayName = user.displayName ?: email.substringBefore("@"),
-            email = user.email ?: email
-        )
+        authDataSource.signIn(email.trim(), password)
     }
 
     suspend fun signUp(displayName: String, email: String, password: String): Result<UserAccount> = runCatching {
-        val result = auth.createUserWithEmailAndPassword(email, password).await()
-        val user = result.user ?: error("Sign up failed: no user returned")
-
-        val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
-            .setDisplayName(displayName)
-            .build()
-        runCatching { user.updateProfile(profileUpdates).await() }
-
-        UserAccount(uid = user.uid, displayName = displayName, email = email)
+        val user = authDataSource.signUp(displayName.trim(), email.trim(), password)
+        profileDataSource.createProfile(user)
+        user
     }
 
     fun signOut() {
-        auth.signOut()
+        authDataSource.signOut()
+    }
+
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> = runCatching {
+        authDataSource.sendPasswordResetEmail(email.trim())
     }
 }

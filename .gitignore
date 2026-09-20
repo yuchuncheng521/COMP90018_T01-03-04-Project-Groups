@@ -15,3 +15,4 @@ local.properties
 .idea/assetWizardSettings.xml
 .DS_Store
 *.hprof
+reference-docs/
