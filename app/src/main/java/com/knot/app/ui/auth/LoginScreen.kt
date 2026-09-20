@@ -66,7 +66,8 @@ private fun LoginScreenPreview() {
     fun LoginScreen(
         viewModel: AuthViewModel,
         onLoginSuccess: (UserAccount) -> Unit,
-        onNavigateToSignUp: () -> Unit
+        onNavigateToSignUp: () -> Unit,
+        onNavigateToForgotPassword: () -> Unit = {}
     ) {
         val uiState = viewModel.uiState
         var email by remember { mutableStateOf("") }
@@ -133,6 +134,12 @@ private fun LoginScreenPreview() {
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    TextButton(
+                        onClick = onNavigateToForgotPassword,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Forgot password?")
+                    }
                 }
 
                 uiState.errorMessage?.let { message ->
