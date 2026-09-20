@@ -36,6 +36,12 @@ class NearbyManager(
 
     private val strategy = Strategy.P2P_CLUSTER
 
+    private val _errorMessage =
+        MutableStateFlow<String?>(null)
+
+    val errorMessage: StateFlow<String?> =
+        _errorMessage.asStateFlow()
+
     private val endpointDiscoveryCallback =
         object : EndpointDiscoveryCallback() {
 
@@ -87,6 +93,14 @@ class NearbyManager(
                 endpointDiscoveryCallback,
                 options
             )
+            .addOnSuccessListener {
+                println("Nearby discovery started")
+                _errorMessage.value = null
+            }
+            .addOnFailureListener { exception ->
+                _errorMessage.value =
+                    "Nearby discovery failed: ${exception.message}"
+            }
     }
     private val connectionLifecycleCallback =
         object : ConnectionLifecycleCallback() {
@@ -157,11 +171,28 @@ class NearbyManager(
                 .setStrategy(strategy)
                 .build()
 
-        connectionsClient.startAdvertising(
-            userName,
-            serviceId,
-            connectionLifecycleCallback,
-            options
-        )
+        connectionsClient
+            .startAdvertising(
+                userName,
+                serviceId,
+                connectionLifecycleCallback,
+                options
+            )
+            .addOnSuccessListener {
+                println("Nearby advertising started")
+                _errorMessage.value = null
+            }
+            .addOnFailureListener { exception ->
+                _errorMessage.value =
+                    "Nearby advertising failed: ${exception.message}"
+            }
+    }
+    fun stopNearby() {
+        connectionsClient.stopDiscovery()
+        connectionsClient.stopAdvertising()
+        connectionsClient.stopAllEndpoints()
+
+        _nearbyMembers.value = emptyList()
+        _connectedMembers.value = emptyList()
     }
 }
