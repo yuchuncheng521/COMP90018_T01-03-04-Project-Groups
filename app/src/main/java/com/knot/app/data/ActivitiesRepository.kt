@@ -6,6 +6,7 @@ import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
 import kotlinx.coroutines.tasks.await
+import com.knot.app.nearby.NearbyManager
 
 /**
  * Loads the weekly prompts / quests assigned to the current user across all their groups.
@@ -16,7 +17,9 @@ import kotlinx.coroutines.tasks.await
  * [getP2pAlert] is a placeholder you can wire up once the BLE scanning service exists.
  * Falls back to [sampleActivities] / [samplePlaceholderAlert] when there's no backend yet.
  */
-class ActivitiesRepository {
+class ActivitiesRepository(
+    private val nearbyManager: NearbyManager
+) {
 
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
@@ -49,7 +52,21 @@ class ActivitiesRepository {
      * implemented (see project plan: "Nearby Connections API" + foreground scan service).
      * Returning a non-null value here is what makes the placeholder banner show up.
      */
-    suspend fun getP2pAlert(): ActivityItem? = samplePlaceholderAlert
+    suspend fun getP2pAlert(): ActivityItem? {
+        val connectedMember =
+            nearbyManager.connectedMembers.value.firstOrNull()
+                ?: return null
+
+        return ActivityItem(
+            id = "p2p-${connectedMember.endpointId}",
+            groupName = "Nearby member",
+            title = "You're near ${connectedMember.endpointName} right now!",
+            description = "Capture this moment together before it's gone.",
+            type = ActivityType.P2P_ALERT,
+            status = ActivityStatus.PENDING,
+            dueLabel = "Detected just now · Nearby"
+        )
+    }
 
     companion object {
         val samplePlaceholderAlert = ActivityItem(

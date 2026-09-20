@@ -9,7 +9,10 @@ import com.knot.app.data.ActivitiesRepository
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import kotlinx.coroutines.launch
-
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import com.knot.app.nearby.NearbyManager
+import com.knot.app.model.ActivityType
 data class ActivitiesUiState(
     val isLoading: Boolean = true,
     val activities: List<ActivityItem> = emptyList(),
@@ -17,15 +20,22 @@ data class ActivitiesUiState(
     val p2pAlertDismissed: Boolean = false
 )
 
-class ActivitiesViewModel @JvmOverloads constructor(
-    private val repository: ActivitiesRepository = ActivitiesRepository()
-) : ViewModel() {
+class ActivitiesViewModel(
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val nearbyManager =
+        NearbyManager(application.applicationContext)
+
+    private val repository =
+        ActivitiesRepository(nearbyManager)
 
     var uiState by mutableStateOf(ActivitiesUiState())
         private set
 
     init {
         loadActivities()
+        observeNearbyMembers()
     }
 
     fun loadActivities() {
@@ -50,5 +60,35 @@ class ActivitiesViewModel @JvmOverloads constructor(
                 if (it.id == activityId) it.copy(status = ActivityStatus.COMPLETED) else it
             }
         )
+    }
+
+    fun startNearby(userName: String) {
+        nearbyManager.startAdvertising(userName)
+        nearbyManager.startDiscovery()
+    }
+
+    private fun observeNearbyMembers() {
+        viewModelScope.launch {
+            nearbyManager.connectedMembers.collect { members ->
+
+                val alert =
+                    members.firstOrNull()?.let { member ->
+                        ActivityItem(
+                            id = "p2p-${member.endpointId}",
+                            groupName = "Nearby member",
+                            title = "You're near ${member.endpointName} right now!",
+                            description = "Capture this moment together before it's gone.",
+                            type = ActivityType.P2P_ALERT,
+                            status = ActivityStatus.PENDING,
+                            dueLabel = "Detected just now · Nearby"
+                        )
+                    }
+
+                uiState = uiState.copy(
+                    p2pAlert = alert,
+                    p2pAlertDismissed = false
+                )
+            }
+        }
     }
 }

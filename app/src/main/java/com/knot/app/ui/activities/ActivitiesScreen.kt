@@ -89,6 +89,27 @@ fun ActivitiesScreen(
         mutableStateOf<String?>(null)
     }
 
+    //nearby
+    val nearbyPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+
+            val granted =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
+                            permissions[Manifest.permission.BLUETOOTH_CONNECT] == true &&
+                            permissions[Manifest.permission.BLUETOOTH_ADVERTISE] == true
+                } else {
+                    true
+                }
+
+            if (granted) {
+                viewModel.startNearby("KnotUser")
+
+            }
+        }
+
 
 
     // Reusable function for getting the current location
@@ -419,6 +440,27 @@ fun ActivitiesScreen(
                             )
                         }
                     )
+                }
+            }
+
+            //nearby
+            item {
+                Button(
+                    onClick = {
+                        if (PermissionManager.hasNearbyPermissions(context)) {
+                            viewModel.startNearby("KnotUser")
+                        } else {
+                            nearbyPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.BLUETOOTH_SCAN,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
+                                    Manifest.permission.BLUETOOTH_ADVERTISE
+                                )
+                            )
+                        }
+                    }
+                ) {
+                    Text("Start Nearby")
                 }
             }
         }
