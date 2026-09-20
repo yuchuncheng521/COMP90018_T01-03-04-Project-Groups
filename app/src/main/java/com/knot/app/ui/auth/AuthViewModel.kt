@@ -12,18 +12,29 @@ import kotlinx.coroutines.launch
 data class AuthUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val loggedInUser: UserAccount? = null
+    val loggedInUser: UserAccount? = null,
+    val isPasswordResetEmailSent: Boolean = false
 )
 
 class AuthViewModel @JvmOverloads constructor(
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
-    var uiState by mutableStateOf(AuthUiState())
+    var uiState by mutableStateOf(AuthUiState(loggedInUser = repository.currentUser))
         private set
 
     val isLoggedIn: Boolean
         get() = repository.isLoggedIn
+
+    init {
+        // Keep the UI in sync automatically if the session expires or the user is signed
+        // out elsewhere (token revoked, password changed on another device, etc.).
+        viewModelScope.launch {
+            repository.authStateFlow().collect { user ->
+                uiState = uiState.copy(loggedInUser = user)
+            }
+        }
+    }
 
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
@@ -34,8 +45,8 @@ class AuthViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             val result = repository.signIn(email.trim(), password)
             uiState = result.fold(
-                onSuccess = { AuthUiState(isLoading = false, loggedInUser = it) },
-                onFailure = { AuthUiState(isLoading = false, errorMessage = it.message ?: "Login failed. Please try again.") }
+                onSuccess = { uiState.copy(isLoading = false, loggedInUser = it, errorMessage = null) },
+                onFailure = { uiState.copy(isLoading = false, errorMessage = it.message ?: "Login failed. Please try again.") }
             )
         }
     }
@@ -57,10 +68,29 @@ class AuthViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             val result = repository.signUp(displayName.trim(), email.trim(), password)
             uiState = result.fold(
-                onSuccess = { AuthUiState(isLoading = false, loggedInUser = it) },
-                onFailure = { AuthUiState(isLoading = false, errorMessage = it.message ?: "Sign up failed. Please try again.") }
+                onSuccess = { uiState.copy(isLoading = false, loggedInUser = it, errorMessage = null) },
+                onFailure = { uiState.copy(isLoading = false, errorMessage = it.message ?: "Sign up failed. Please try again.") }
             )
         }
+    }
+
+    fun sendPasswordResetEmail(email: String) {
+        if (email.isBlank()) {
+            uiState = uiState.copy(errorMessage = "Please enter your email address.")
+            return
+        }
+        uiState = uiState.copy(isLoading = true, errorMessage = null)
+        viewModelScope.launch {
+            val result = repository.sendPasswordResetEmail(email.trim())
+            uiState = result.fold(
+                onSuccess = { uiState.copy(isLoading = false, isPasswordResetEmailSent = true) },
+                onFailure = { uiState.copy(isLoading = false, errorMessage = it.message ?: "Couldn't send reset email. Please try again.") }
+            )
+        }
+    }
+
+    fun clearPasswordResetState() {
+        uiState = uiState.copy(isPasswordResetEmailSent = false, errorMessage = null)
     }
 
     fun clearError() {
