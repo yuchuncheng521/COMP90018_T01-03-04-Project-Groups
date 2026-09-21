@@ -1,15 +1,19 @@
 package com.knot.app.ui.settings
 
 import android.app.Application
+import android.content.Intent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.knot.app.KnotApplication
 import com.knot.app.data.AuthRepository
 import com.knot.app.model.UserAccount
-import androidx.lifecycle.viewModelScope
+import com.knot.app.nearby.NearbyForegroundService
 import kotlinx.coroutines.launch
+
 data class AccountSettingsUiState(
     val account: UserAccount = UserAccount(
         displayName = "Guest",
@@ -76,7 +80,7 @@ class AccountSettingsViewModel(
         )
 
         if (!enabled) {
-            nearbyManager.stopNearby()
+            stopNearby()
         }
     }
 
@@ -87,7 +91,7 @@ class AccountSettingsViewModel(
     }
 
     fun signOut(onSignedOut: () -> Unit) {
-        nearbyManager.stopNearby()
+        stopNearby()
         repository.signOut()
         onSignedOut()
     }
@@ -95,7 +99,33 @@ class AccountSettingsViewModel(
     fun startNearby() {
         val userName = uiState.account.displayName.ifBlank { "KnotUser" }
 
-        nearbyManager.startAdvertising(userName)
-        nearbyManager.startDiscovery()
+        val intent =
+            Intent(
+                getApplication(),
+                NearbyForegroundService::class.java
+            ).apply {
+                putExtra(
+                    NearbyForegroundService.EXTRA_USER_NAME,
+                    userName
+                )
+            }
+
+        ContextCompat.startForegroundService(
+            getApplication(),
+            intent
+        )
+    }
+
+    private fun stopNearby() {
+        val intent =
+            Intent(
+                getApplication(),
+                NearbyForegroundService::class.java
+            )
+
+        getApplication<Application>()
+            .stopService(intent)
+
+        nearbyManager.stopNearby()
     }
 }
