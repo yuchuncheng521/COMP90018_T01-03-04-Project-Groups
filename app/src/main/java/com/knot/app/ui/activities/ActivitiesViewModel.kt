@@ -1,18 +1,18 @@
 package com.knot.app.ui.activities
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.knot.app.KnotApplication
 import com.knot.app.data.ActivitiesRepository
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
-import kotlinx.coroutines.launch
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import com.knot.app.nearby.NearbyManager
 import com.knot.app.model.ActivityType
+import kotlinx.coroutines.launch
+
 data class ActivitiesUiState(
     val isLoading: Boolean = true,
     val activities: List<ActivityItem> = emptyList(),
@@ -25,7 +25,7 @@ class ActivitiesViewModel(
 ) : AndroidViewModel(application) {
 
     private val nearbyManager =
-        NearbyManager(application.applicationContext)
+        (application as KnotApplication).nearbyManager
 
     private val repository =
         ActivitiesRepository(nearbyManager)
@@ -40,24 +40,33 @@ class ActivitiesViewModel(
 
     fun loadActivities() {
         uiState = uiState.copy(isLoading = true)
+
         viewModelScope.launch {
-            // TODO(sensors): getP2pAlert() is currently a placeholder. Replace with a live
-            // observer on the BLE proximity-scan service once it exists, so this banner reacts
-            // in real time instead of only refreshing on screen load.
             val activities = repository.getActivities()
             val alert = repository.getP2pAlert()
-            uiState = uiState.copy(isLoading = false, activities = activities, p2pAlert = alert)
+
+            uiState = uiState.copy(
+                isLoading = false,
+                activities = activities,
+                p2pAlert = alert
+            )
         }
     }
 
     fun dismissP2pAlert() {
-        uiState = uiState.copy(p2pAlertDismissed = true)
+        uiState = uiState.copy(
+            p2pAlertDismissed = true
+        )
     }
 
     fun markCompleted(activityId: String) {
         uiState = uiState.copy(
             activities = uiState.activities.map {
-                if (it.id == activityId) it.copy(status = ActivityStatus.COMPLETED) else it
+                if (it.id == activityId) {
+                    it.copy(status = ActivityStatus.COMPLETED)
+                } else {
+                    it
+                }
             }
         )
     }
