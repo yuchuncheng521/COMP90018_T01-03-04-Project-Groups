@@ -10,5 +10,6 @@ data class Group(
     val memberCount: Int = 0,
     val memberAvatars: List<String> = emptyList(), // initials or image URLs, placeholder for now
     val lastActivitySummary: String = "",
-    val unreadCount: Int = 0
+    val unreadCount: Int = 0,
+    val createdAt: Long = 0L // epoch millis -- when the group was created; drives the month list on GroupDetailScreen
 )

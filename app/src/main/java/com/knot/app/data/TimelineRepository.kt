@@ -63,25 +63,34 @@ class TimelineRepository {
 
     companion object {
         /** Placeholder data shown when there's no Firebase project configured yet, or no memories exist. */
+        private val DAY = 24 * 60 * 60 * 1000L
         val sampleMemories = listOf(
             Memory(
-                id = "sample-1",
-                groupId = "sample-1",
-                authorId = "u1",
-                authorName = "Sarah",
-                type = MemoryType.PHOTO,
-                thumbnailUrl = "",
-                textContent = "",
-                createdAt = System.currentTimeMillis() - 3_600_000
+                id = "sample-1", groupId = "sample-1", authorId = "u1", authorName = "Sarah",
+                type = MemoryType.PHOTO, createdAt = System.currentTimeMillis() - 1 * DAY
             ),
             Memory(
-                id = "sample-2",
-                groupId = "sample-1",
-                authorId = "u2",
-                authorName = "Mariana",
-                type = MemoryType.TEXT,
-                textContent = "Grandma's arroz con pollo, every Sunday without fail.",
-                createdAt = System.currentTimeMillis() - 90_000_000
+                id = "sample-2", groupId = "sample-1", authorId = "u2", authorName = "Mariana",
+                type = MemoryType.TEXT, textContent = "Grandma's arroz con pollo, every Sunday without fail.",
+                createdAt = System.currentTimeMillis() - 2 * DAY
+            ),
+            Memory(
+                id = "sample-3", groupId = "sample-1", authorId = "u3", authorName = "Yu-Chun",
+                type = MemoryType.AUDIO, textContent = "Best trip we ever took together",
+                createdAt = System.currentTimeMillis() - 9 * DAY
+            ),
+            Memory(
+                id = "sample-4", groupId = "sample-1", authorId = "u1", authorName = "Sarah",
+                type = MemoryType.PHOTO, createdAt = System.currentTimeMillis() - 16 * DAY
+            ),
+            Memory(
+                id = "sample-5", groupId = "sample-1", authorId = "u2", authorName = "Mariana",
+                type = MemoryType.TEXT, textContent = "We should do this every Sunday",
+                createdAt = System.currentTimeMillis() - 23 * DAY
+            ),
+            Memory(
+                id = "sample-6", groupId = "sample-1", authorId = "u3", authorName = "Qin Yu",
+                type = MemoryType.VIDEO, createdAt = System.currentTimeMillis() - 30 * DAY
             )
         )
     }
