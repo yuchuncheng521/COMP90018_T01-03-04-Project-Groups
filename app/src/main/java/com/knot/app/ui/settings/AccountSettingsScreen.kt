@@ -72,6 +72,12 @@ fun AccountSettingsScreen(
         if (!notificationsAllowed && uiState.notificationsEnabled) {
             viewModel.setNotificationsEnabled(false)
         }
+
+        if (!PermissionManager.hasLocationPermission(context) &&
+            uiState.shareLocationWithMemories
+        ) {
+            viewModel.setShareLocationWithMemories(false)
+        }
     }
 
     DisposableEffect(Unit) {
@@ -124,6 +130,25 @@ fun AccountSettingsScreen(
                 Toast.makeText(
                     context,
                     "Notification permission is required to receive push notifications.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val granted =
+                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                        permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+            viewModel.setShareLocationWithMemories(granted)
+
+            if (!granted) {
+                Toast.makeText(
+                    context,
+                    "Location permission is required to attach location to memories.",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -331,7 +356,20 @@ fun AccountSettingsScreen(
                     title = "Attach location to memories",
                     subtitle = "Store where a memory happened along with the date",
                     checked = uiState.shareLocationWithMemories,
-                    onCheckedChange = viewModel::setShareLocationWithMemories
+                    onCheckedChange = { enabled ->
+                        if (!enabled) {
+                            viewModel.setShareLocationWithMemories(false)
+                        } else if (PermissionManager.hasLocationPermission(context)) {
+                            viewModel.setShareLocationWithMemories(true)
+                        } else {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        }
+                    }
                 )
             }
 
