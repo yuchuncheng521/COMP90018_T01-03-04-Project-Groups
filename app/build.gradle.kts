@@ -71,7 +71,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
-
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // Coroutines <-> Firebase Task interop
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
@@ -103,5 +103,4 @@ dependencies {
 
     //Nearby Connections
     implementation("com.google.android.gms:play-services-nearby:19.3.0")
-
 }
