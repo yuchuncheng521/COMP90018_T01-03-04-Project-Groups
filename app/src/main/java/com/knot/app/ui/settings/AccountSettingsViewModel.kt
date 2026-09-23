@@ -12,6 +12,7 @@ import com.knot.app.KnotApplication
 import com.knot.app.data.AuthRepository
 import com.knot.app.model.UserAccount
 import com.knot.app.nearby.NearbyForegroundService
+import com.knot.app.notifications.NotificationPreferences
 import kotlinx.coroutines.launch
 
 data class AccountSettingsUiState(
@@ -41,7 +42,9 @@ class AccountSettingsViewModel(
                 ?: UserAccount(
                     displayName = "Guest",
                     email = "Not signed in"
-                )
+                ),
+            notificationsEnabled =
+                NotificationPreferences.isPushEnabled(application)
         )
     )
         private set
@@ -63,6 +66,11 @@ class AccountSettingsViewModel(
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
+        NotificationPreferences.setPushEnabled(
+            getApplication(),
+            enabled
+        )
+
         uiState = uiState.copy(
             notificationsEnabled = enabled
         )
