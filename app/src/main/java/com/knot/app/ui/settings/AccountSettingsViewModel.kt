@@ -21,7 +21,7 @@ data class AccountSettingsUiState(
     ),
     val notificationsEnabled: Boolean = true,
     val weeklyPromptRemindersEnabled: Boolean = true,
-    val p2pAlertsEnabled: Boolean = true,
+    val p2pAlertsEnabled: Boolean = false,
     val shareLocationWithMemories: Boolean = true,
     val nearbyError: String? = null
 )
