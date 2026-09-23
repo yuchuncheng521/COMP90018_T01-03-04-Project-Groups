@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import android.Manifest
 import android.os.Build
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +58,18 @@ fun AccountSettingsScreen(
         if (!PermissionManager.isBluetoothEnabled(context)) {
             viewModel.setP2pAlertsEnabled(false)
         }
+
+        val notificationsAllowed =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+
+        viewModel.setNotificationsEnabled(notificationsAllowed)
     }
 
     DisposableEffect(Unit) {
@@ -97,6 +111,21 @@ fun AccountSettingsScreen(
             context.unregisterReceiver(receiver)
         }
     }
+
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            viewModel.setNotificationsEnabled(granted)
+
+            if (!granted) {
+                Toast.makeText(
+                    context,
+                    "Notification permission is required to receive push notifications.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
     val nearbyPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -172,7 +201,27 @@ fun AccountSettingsScreen(
                     title = "Push notifications",
                     subtitle = "Get notified about new prompts and replies",
                     checked = uiState.notificationsEnabled,
-                    onCheckedChange = viewModel::setNotificationsEnabled
+                    onCheckedChange = { enabled ->
+                        if (!enabled) {
+                            viewModel.setNotificationsEnabled(false)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            val alreadyGranted =
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                            if (alreadyGranted) {
+                                viewModel.setNotificationsEnabled(true)
+                            } else {
+                                notificationPermissionLauncher.launch(
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                            }
+                        } else {
+                            viewModel.setNotificationsEnabled(true)
+                        }
+                    }
                 )
             }
 
