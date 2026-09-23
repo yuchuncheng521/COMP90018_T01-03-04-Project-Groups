@@ -69,7 +69,9 @@ fun AccountSettingsScreen(
                 true
             }
 
-        viewModel.setNotificationsEnabled(notificationsAllowed)
+        if (!notificationsAllowed && uiState.notificationsEnabled) {
+            viewModel.setNotificationsEnabled(false)
+        }
     }
 
     DisposableEffect(Unit) {
