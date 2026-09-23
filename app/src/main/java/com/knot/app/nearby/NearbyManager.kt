@@ -23,8 +23,10 @@ class NearbyManager(
     context: Context
 ) {
 
+    private val appContext = context.applicationContext
+
     private val connectionsClient =
-        Nearby.getConnectionsClient(context)
+        Nearby.getConnectionsClient(appContext)
 
     private val auth: FirebaseAuth by lazy {
         FirebaseAuth.getInstance()
@@ -308,6 +310,12 @@ class NearbyManager(
                                 .filterNot {
                                     it.endpointId == endpointId
                                 } + verifiedMember
+
+                        P2pLocalNotificationManager
+                            .showNearbyMemberNotification(
+                                context = appContext,
+                                peerName = peerName
+                            )
 
                         _errorMessage.value = null
                     }
