@@ -21,6 +21,7 @@ object PermissionManager {
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
     }
+
     fun hasLocationPermission(context: Context): Boolean {
         val fineLocationGranted =
             ContextCompat.checkSelfPermission(

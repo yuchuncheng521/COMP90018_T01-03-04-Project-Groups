@@ -42,4 +42,44 @@ class AuthRepository(
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> = runCatching {
         authDataSource.sendPasswordResetEmail(email.trim())
     }
+
+    suspend fun updateDisplayName(name: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: error("Not logged in")
+        val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+            .setDisplayName(name)
+            .build()
+        user.updateProfile(profileUpdates).await()
+
+        // Sync to Firestore
+        firestore.collection("users").document(user.uid).update("displayName", name).await()
+    }
+
+    suspend fun updateEmail(newEmail: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: error("Not logged in")
+        // Note: verifyBeforeUpdateEmail is preferred as it sends a verification email 
+        // to the new address before actually changing it.
+        user.verifyBeforeUpdateEmail(newEmail).await()
+
+        // Sync to Firestore
+        firestore.collection("users").document(user.uid).update("email", newEmail).await()
+    }
+
+    suspend fun updatePassword(newPassword: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: error("Not logged in")
+        user.updatePassword(newPassword).await()
+    }
+
+    suspend fun deleteAccount(email: String, password: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: error("Not logged in")
+        
+        // Re-authenticate before deletion
+        val credentials = com.google.firebase.auth.EmailAuthProvider.getCredential(email, password)
+        user.reauthenticate(credentials).await()
+        
+        // Delete from Firestore
+        firestore.collection("users").document(user.uid).delete().await()
+        
+        // Delete from Auth
+        user.delete().await()
+    }
 }
