@@ -22,6 +22,10 @@ class KnotFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
+        if (!NotificationPreferences.isPushEnabled(this)) {
+            return
+        }
+
         val title =
             message.notification?.title
                 ?: message.data["title"]
