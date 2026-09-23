@@ -66,6 +66,14 @@ fun TimelineScreen(
                     }
                 }
             )
+        } ,
+
+        floatingActionButton = {
+            androidx.compose.material3.FloatingActionButton(
+                onClick = { viewModel.createTestMemory(groupId) }
+            ) {
+                androidx.compose.material3.Text("+")
+            }
         }
     ) { padding ->
         when {

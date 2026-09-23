@@ -27,6 +27,13 @@ class GroupsRepository(
         }.getOrElse { sampleGroups }
     }
 
+    /** Fetches a single group by id -- used by GroupDetailScreen to read its createdAt (for the month list) and other fields. */
+    suspend fun getGroup(groupId: String): Group? {
+        return runCatching {
+            firestore.collection("groups").document(groupId).get().await().toGroup()
+        }.getOrNull()
+    }
+
     /** Creates a new private circle owned by the current user and returns it, invite code included. */
     suspend fun createGroup(name: String): Result<Group> = runCatching {
         val uid = auth.currentUser?.uid ?: error("You need to be signed in to create a group.")
@@ -77,6 +84,38 @@ class GroupsRepository(
             ?: error("Something went wrong loading that group.")
     }
 
+    /**
+     * Removes a member from a group. Anyone can remove themselves (leaving the
+     * group); only the owner can remove someone else. The owner can't remove
+     * themselves this way -- deleting/transferring group ownership is a
+     * separate, not-yet-built flow.
+     */
+    suspend fun removeMember(groupId: String, memberIdToRemove: String): Result<Unit> = runCatching {
+        val uid = auth.currentUser?.uid ?: error("You need to be signed in to do that.")
+        val docRef = firestore.collection("groups").document(groupId)
+        val doc = docRef.get().await()
+        val ownerId = doc.getString("ownerId") ?: ""
+
+        val isRemovingSelf = uid == memberIdToRemove
+        val isOwnerRemovingSomeoneElse = uid == ownerId && memberIdToRemove != ownerId
+        if (!isRemovingSelf && !isOwnerRemovingSomeoneElse) {
+            error("You don't have permission to remove this member.")
+        }
+
+        docRef.update(
+            mapOf(
+                "memberIds" to FieldValue.arrayRemove(memberIdToRemove),
+                "memberCount" to FieldValue.increment(-1L)
+            )
+        ).await()
+
+        runCatching {
+            firestore.collection("users").document(memberIdToRemove)
+                .update("groupIds", FieldValue.arrayRemove(groupId))
+                .await()
+        }
+    }
+
     private suspend fun addGroupToUserProfile(uid: String, groupId: String) {
         runCatching {
             firestore.collection("users").document(uid)
@@ -99,6 +138,7 @@ class GroupsRepository(
             memberAvatars = (get("memberAvatars") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
             lastActivitySummary = getString("lastActivitySummary") ?: "",
             unreadCount = (getLong("unreadCount") ?: 0L).toInt(),
+            createdAt = getTimestamp("createdAt")?.toDate()?.time ?: 0L,
             ownerId = getString("ownerId") ?: "",
             inviteCode = getString("inviteCode") ?: ""
         )

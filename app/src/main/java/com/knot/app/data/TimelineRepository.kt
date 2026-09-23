@@ -31,6 +31,31 @@ class TimelineRepository {
         }.getOrElse { sampleMemories }
     }
 
+    /**
+     * Creates a new memory (text/photo/audio/video answer) for a group.
+     * Photo/audio/video types only store a contentUrl if you already have one
+     * (e.g. from Firebase Storage) -- actual file upload isn't wired yet, so
+     * for now this is easiest to test with MemoryType.TEXT.
+     */
+    suspend fun createMemory(memory: Memory): Result<Memory> = runCatching {
+        val docRef = firestore.collection("memories").document()
+        val data = mapOf(
+            "groupId" to memory.groupId,
+            "authorId" to memory.authorId,
+            "authorName" to memory.authorName,
+            "activityId" to memory.activityId,
+            "type" to memory.type.name,
+            "contentUrl" to memory.contentUrl,
+            "thumbnailUrl" to memory.thumbnailUrl,
+            "textContent" to memory.textContent,
+            "locationLat" to memory.locationLat,
+            "locationLng" to memory.locationLng,
+            "createdAt" to System.currentTimeMillis()
+        )
+        docRef.set(data).await()
+        memory.copy(id = docRef.id)
+    }
+
     /** Just the memories inside one week, oldest first (for the weekly spread view). */
     suspend fun getMemoriesForWeek(groupId: String, weekStartMillis: Long, weekEndMillis: Long): List<Memory> {
         return runCatching {
@@ -63,34 +88,25 @@ class TimelineRepository {
 
     companion object {
         /** Placeholder data shown when there's no Firebase project configured yet, or no memories exist. */
-        private val DAY = 24 * 60 * 60 * 1000L
         val sampleMemories = listOf(
             Memory(
-                id = "sample-1", groupId = "sample-1", authorId = "u1", authorName = "Sarah",
-                type = MemoryType.PHOTO, createdAt = System.currentTimeMillis() - 1 * DAY
+                id = "sample-1",
+                groupId = "sample-1",
+                authorId = "u1",
+                authorName = "Sarah",
+                type = MemoryType.PHOTO,
+                thumbnailUrl = "",
+                textContent = "",
+                createdAt = System.currentTimeMillis() - 3_600_000
             ),
             Memory(
-                id = "sample-2", groupId = "sample-1", authorId = "u2", authorName = "Mariana",
-                type = MemoryType.TEXT, textContent = "Grandma's arroz con pollo, every Sunday without fail.",
-                createdAt = System.currentTimeMillis() - 2 * DAY
-            ),
-            Memory(
-                id = "sample-3", groupId = "sample-1", authorId = "u3", authorName = "Yu-Chun",
-                type = MemoryType.AUDIO, textContent = "Best trip we ever took together",
-                createdAt = System.currentTimeMillis() - 9 * DAY
-            ),
-            Memory(
-                id = "sample-4", groupId = "sample-1", authorId = "u1", authorName = "Sarah",
-                type = MemoryType.PHOTO, createdAt = System.currentTimeMillis() - 16 * DAY
-            ),
-            Memory(
-                id = "sample-5", groupId = "sample-1", authorId = "u2", authorName = "Mariana",
-                type = MemoryType.TEXT, textContent = "We should do this every Sunday",
-                createdAt = System.currentTimeMillis() - 23 * DAY
-            ),
-            Memory(
-                id = "sample-6", groupId = "sample-1", authorId = "u3", authorName = "Qin Yu",
-                type = MemoryType.VIDEO, createdAt = System.currentTimeMillis() - 30 * DAY
+                id = "sample-2",
+                groupId = "sample-1",
+                authorId = "u2",
+                authorName = "Mariana",
+                type = MemoryType.TEXT,
+                textContent = "Grandma's arroz con pollo, every Sunday without fail.",
+                createdAt = System.currentTimeMillis() - 90_000_000
             )
         )
     }

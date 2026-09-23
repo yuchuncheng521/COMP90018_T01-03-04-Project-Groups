@@ -3,8 +3,10 @@ package com.knot.app.ui.timeline
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.app.Application
+import com.knot.app.KnotApplication
+import androidx.lifecycle.AndroidViewModel
 import com.knot.app.data.ActivitiesRepository
 import com.knot.app.data.TimelineRepository
 import com.knot.app.model.Memory
@@ -30,10 +32,15 @@ data class TimelineUiState(
     val currentWeek: WeekBucket? get() = weeks.getOrNull(currentWeekIndex)
 }
 
-class TimelineViewModel @JvmOverloads constructor(
-    private val repository: TimelineRepository = TimelineRepository(),
-    private val activitiesRepository: ActivitiesRepository = ActivitiesRepository()
-) : ViewModel() {
+class TimelineViewModel(
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val nearbyManager =
+        (application as KnotApplication).nearbyManager
+
+    private val repository = TimelineRepository()
+    private val activitiesRepository = ActivitiesRepository(nearbyManager)
 
     var uiState by mutableStateOf(TimelineUiState())
         private set
@@ -89,6 +96,22 @@ class TimelineViewModel @JvmOverloads constructor(
     fun goToWeekIndex(index: Int) {
         if (index in uiState.weeks.indices) {
             uiState = uiState.copy(currentWeekIndex = index)
+        }
+    }
+
+    /** TEMPORARY -- for testing that writes/reads to Firestore actually work.
+     *  Delete this once there's a real "create memory" screen. */
+    fun createTestMemory(groupId: String) {
+        viewModelScope.launch {
+            val testMemory = Memory(
+                groupId = groupId,
+                authorId = "test-user",
+                authorName = "Test",
+                type = com.knot.app.model.MemoryType.TEXT,
+                textContent = "Test memory created at ${System.currentTimeMillis()}"
+            )
+            repository.createMemory(testMemory)
+            loadTimeline(groupId) // reload so the new memory shows up
         }
     }
 }
