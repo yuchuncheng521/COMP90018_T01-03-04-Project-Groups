@@ -6,8 +6,6 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.knot.app.MainActivity
@@ -17,7 +15,7 @@ class KnotFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        saveTokenForCurrentUser(token)
+        FcmTokenManager.saveTokenForCurrentUser(token)
         println("FCM token: $token")
     }
 
@@ -35,21 +33,6 @@ class KnotFirebaseMessagingService : FirebaseMessagingService() {
                 ?: "You have a new update."
 
         showNotification(title, body)
-    }
-
-    private fun saveTokenForCurrentUser(token: String) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(uid)
-            .update("fcmToken", token)
-            .addOnSuccessListener {
-                println("FCM token saved for user: $uid")
-            }
-            .addOnFailureListener { exception ->
-                println("Failed to save FCM token: ${exception.message}")
-            }
     }
 
     private fun showNotification(
