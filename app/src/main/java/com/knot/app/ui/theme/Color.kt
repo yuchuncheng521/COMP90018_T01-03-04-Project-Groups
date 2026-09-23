@@ -19,4 +19,3 @@ val KnotRed = Color(0xFF8C2E30)
 val KnotDarkBrown = Color(0xFF3C251A)
 
 val KnotBlue = Color(0xFF9CB5C0)
-val KnotGreen = Color(0xFF428A68)
