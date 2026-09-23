@@ -29,6 +29,7 @@ import com.knot.app.ui.settings.AccountSettingsViewModel
 import com.knot.app.ui.settings.AppPreferencesScreen
 import com.knot.app.ui.settings.DeleteAccountScreen
 import com.knot.app.ui.settings.EditProfileScreen
+import com.knot.app.ui.groups.MonthDetailScreen
 
 @Composable
 fun KnotNavHost() {
@@ -119,7 +120,10 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
                 GroupDetailScreen(
                     groupId = groupId,
-                    onBackClick = { mainNavController.popBackStack() }
+                    onBackClick = { mainNavController.popBackStack() },
+                    onAlbumClick = { album ->
+                        mainNavController.navigate("monthDetail/${album}")
+                    }
                 )
             }
             composable(MainScreen.Activities.route) {
@@ -148,6 +152,16 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 ActivityDetailScreen(
                     activityId = activityId,
                     viewModel = activitiesViewModel,
+                    onBackClick = { mainNavController.popBackStack() }
+                )
+            }
+            composable(
+                route = "monthDetail/{monthLabel}",
+                arguments = listOf(navArgument("monthLabel") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val monthLabel = backStackEntry.arguments?.getString("monthLabel") ?: return@composable
+                MonthDetailScreen(
+                    monthLabel = monthLabel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
