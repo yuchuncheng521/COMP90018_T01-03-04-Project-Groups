@@ -28,6 +28,8 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,10 +52,16 @@ import androidx.core.content.PermissionChecker
 import android.Manifest
 import androidx.compose.foundation.layout.Arrangement
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+
 @Composable
 fun CameraScreen(
     onPhotoSelected: (String) -> Unit,
-    onVideoSelected: (String) -> Unit
+    onVideoSelected: (String) -> Unit,
+    onCancel: () -> Unit,
 ) {
     var capturedPhotoPath by remember { mutableStateOf<String?>(null) }
     var capturedVideoPath by remember { mutableStateOf<String?>(null) }
@@ -83,87 +91,107 @@ fun CameraScreen(
         mutableStateOf<Recording?>(null)
     }
     if (capturedPhotoPath != null) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                painter = rememberAsyncImagePainter(
-                    model = File(capturedPhotoPath!!)
-                ),
-                contentDescription = "Captured photo",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentScale = ContentScale.Fit
-            )
-
-            Row(
-                modifier = Modifier.padding(16.dp)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Button(
-                    onClick = {
-                        capturedPhotoPath = null
-                    }
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        model = File(capturedPhotoPath!!)
+                    ),
+                    contentDescription = "Captured photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentScale = ContentScale.Fit
+                )
+
+                Row(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Text("Retake")
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Button(
-                    onClick = {
-                        capturedPhotoPath?.let { path ->
-                            onPhotoSelected(path)
+                    Button(
+                        onClick = {
+                            capturedPhotoPath = null
                         }
+                    ) {
+                        Text("Retake")
                     }
-                ) {
-                    Text("Use Photo")
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Button(
+                        onClick = {
+                            capturedPhotoPath?.let { path ->
+                                onPhotoSelected(path)
+                            }
+                        }
+                    ) {
+                        Text("Use Photo")
+                    }
                 }
+            }
+
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha = 0.5f), contentColor = Color.White)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Cancel")
             }
         }
 
         return
     }
     if (capturedVideoPath != null) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text("Video recorded successfully")
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    capturedVideoPath = null
-                }
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text("Retake Video")
-            }
+                Text("Video recorded successfully")
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = {
-                    capturedVideoPath?.let { path ->
-                        onVideoSelected(path)
+                Button(
+                    onClick = {
+                        capturedVideoPath = null
                     }
+                ) {
+                    Text("Retake Video")
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        capturedVideoPath?.let { path ->
+                            onVideoSelected(path)
+                        }
+                    }
+                ) {
+                    Text("Use Video")
+                }
+            }
+
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha = 0.5f), contentColor = Color.White)
             ) {
-                Text("Use Video")
+                Icon(Icons.Default.Close, contentDescription = "Cancel")
             }
         }
 
-            return
-        }
+        return
+    }
 
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
 
-            AndroidView(
+        AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
 
@@ -214,6 +242,14 @@ fun CameraScreen(
                     previewView
                 }
             )
+
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Black.copy(alpha = 0.5f), contentColor = Color.White)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Cancel")
+            }
 
             Row(
                 modifier = Modifier
