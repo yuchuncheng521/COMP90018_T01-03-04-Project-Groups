@@ -82,7 +82,7 @@ class ActivitiesViewModel(
                 id = "p2p-simulated",
                 groupId = "test-group",
                 groupName = "Melbourne Uni Squad",
-                title = "Alice is nearby. Capture a memory together?",
+                title = "test_user is nearby. Capture a memory together?",
                 description = "You're both here right now. Take a photo to save this moment.",
                 type = ActivityType.P2P_ALERT,
                 status = ActivityStatus.PENDING,
