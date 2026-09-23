@@ -54,6 +54,128 @@ fun ActivitiesScreen(
     onCreateClick: () -> Unit = {},
 ) {
     val uiState = viewModel.uiState
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Screen states
+    var showCamera by remember { mutableStateOf(false) }
+    var showAudioRecorder by remember { mutableStateOf(false) }
+
+    // Selected media
+    var selectedPhotoPath by remember { mutableStateOf<String?>(null) }
+    var selectedVideoPath by remember { mutableStateOf<String?>(null) }
+    var selectedAudioPath by remember { mutableStateOf<String?>(null) }
+
+    // Location
+    val locationManager = remember { LocationManager(context) }
+
+
+    var currentLocationText by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    //nearby
+    val nearbyPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+
+            val granted =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
+                            permissions[Manifest.permission.BLUETOOTH_CONNECT] == true &&
+                            permissions[Manifest.permission.BLUETOOTH_ADVERTISE] == true
+                } else {
+                    true
+                }
+
+            if (granted) {
+                viewModel.startNearby("KnotUser")
+
+            }
+        }
+
+
+
+    // Reusable function for getting the current location
+    fun updateCurrentLocation() {
+        coroutineScope.launch {
+            val location = locationManager.getCurrentLocation()
+
+            currentLocationText =
+                if (location != null) {
+                    locationManager.getLocationName(location)
+                        ?: "Location detected"
+                } else {
+                    "Location unavailable"
+                }
+        }
+    }
+
+    // Camera permission
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            showCamera = true
+        }
+    }
+
+    // Microphone permission
+    val microphonePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            showAudioRecorder = true
+        }
+    }
+
+    // Location permission
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+
+        val granted =
+            permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                    permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (granted) {
+            updateCurrentLocation()
+        }
+    }
+
+    // Camera screen
+    if (showCamera) {
+        CameraScreen(
+            onPhotoSelected = { photoPath ->
+                selectedPhotoPath = photoPath
+                showCamera = false
+                updateCurrentLocation()
+
+
+            },
+            onVideoSelected = { videoPath ->
+                selectedVideoPath = videoPath
+                showCamera = false
+                updateCurrentLocation()
+            }
+        )
+
+        return
+    }
+
+    // Audio recorder screen
+    if (showAudioRecorder) {
+        AudioRecorderScreen(
+            onAudioSelected = { audioPath ->
+                selectedAudioPath = audioPath
+                showAudioRecorder = false
+                updateCurrentLocation()
+            }
+        )
+
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -176,6 +298,27 @@ fun ActivitiesScreen(
                             )
                         }
                     )
+                }
+            }
+
+            //nearby
+            item {
+                Button(
+                    onClick = {
+                        if (PermissionManager.hasNearbyPermissions(context)) {
+                            viewModel.startNearby("KnotUser")
+                        } else {
+                            nearbyPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.BLUETOOTH_SCAN,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
+                                    Manifest.permission.BLUETOOTH_ADVERTISE
+                                )
+                            )
+                        }
+                    }
+                ) {
+                    Text("Start Nearby")
                 }
             }
         }

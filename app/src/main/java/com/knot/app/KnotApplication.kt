@@ -2,6 +2,8 @@ package com.knot.app
 
 import android.app.Application
 import com.google.firebase.FirebaseApp
+import com.knot.app.nearby.NearbyManager
+import com.knot.app.notifications.FcmTokenManager
 
 /**
  * Application entry point. Initializes Firebase once for the whole app.
@@ -19,8 +21,19 @@ import com.google.firebase.FirebaseApp
  * is still browsable without a configured backend.
  */
 class KnotApplication : Application() {
+
+    lateinit var nearbyManager: NearbyManager
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        runCatching { FirebaseApp.initializeApp(this) }
+
+        runCatching {
+            FirebaseApp.initializeApp(this)
+        }
+
+        nearbyManager = NearbyManager(applicationContext)
+
+        FcmTokenManager.syncCurrentToken()
     }
 }
