@@ -3,15 +3,21 @@ package com.knot.app.nearby
 import android.content.Context
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
-import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
-import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
-import com.google.android.gms.nearby.connection.Strategy
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionResolution
+import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
+import com.google.android.gms.nearby.connection.DiscoveryOptions
+import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
+import com.google.android.gms.nearby.connection.Payload
+import com.google.android.gms.nearby.connection.PayloadCallback
+import com.google.android.gms.nearby.connection.PayloadTransferUpdate
+import com.google.android.gms.nearby.connection.Strategy
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class NearbyManager(
     context: Context
@@ -19,6 +25,14 @@ class NearbyManager(
 
     private val connectionsClient =
         Nearby.getConnectionsClient(context)
+
+    private val auth: FirebaseAuth by lazy {
+        FirebaseAuth.getInstance()
+    }
+
+    private val firestore: FirebaseFirestore by lazy {
+        FirebaseFirestore.getInstance()
+    }
 
     private val _nearbyMembers =
         MutableStateFlow<List<NearbyMember>>(emptyList())
@@ -32,15 +46,112 @@ class NearbyManager(
     val connectedMembers: StateFlow<List<NearbyMember>> =
         _connectedMembers.asStateFlow()
 
-    private val serviceId = "com.knot.app"
-
-    private val strategy = Strategy.P2P_CLUSTER
-
     private val _errorMessage =
         MutableStateFlow<String?>(null)
 
     val errorMessage: StateFlow<String?> =
         _errorMessage.asStateFlow()
+
+    private val serviceId = "com.knot.app"
+    private val strategy = Strategy.P2P_CLUSTER
+
+    private val payloadCallback =
+        object : PayloadCallback() {
+
+            override fun onPayloadReceived(
+                endpointId: String,
+                payload: Payload
+            ) {
+                val bytes = payload.asBytes() ?: return
+                val peerUid = bytes.toString(Charsets.UTF_8)
+
+                if (peerUid.isBlank()) return
+
+                validateSharedGroup(
+                    endpointId = endpointId,
+                    peerUid = peerUid
+                )
+            }
+
+            override fun onPayloadTransferUpdate(
+                endpointId: String,
+                update: PayloadTransferUpdate
+            ) {
+                // UID payloads are tiny byte payloads, so no progress UI is needed.
+            }
+        }
+
+    private val connectionLifecycleCallback =
+        object : ConnectionLifecycleCallback() {
+
+            override fun onConnectionInitiated(
+                endpointId: String,
+                connectionInfo: ConnectionInfo
+            ) {
+                val member =
+                    NearbyMember(
+                        endpointId = endpointId,
+                        endpointName = connectionInfo.endpointName
+                    )
+
+                _nearbyMembers.value =
+                    _nearbyMembers.value
+                        .filterNot { it.endpointId == endpointId } + member
+
+                connectionsClient.acceptConnection(
+                    endpointId,
+                    payloadCallback
+                )
+            }
+
+            override fun onConnectionResult(
+                endpointId: String,
+                result: ConnectionResolution
+            ) {
+                if (!result.status.isSuccess) {
+                    _errorMessage.value =
+                        "Nearby connection failed for $endpointId"
+                    return
+                }
+
+                val myUid = auth.currentUser?.uid
+
+                if (myUid.isNullOrBlank()) {
+                    _errorMessage.value =
+                        "Sign in before using P2P proximity alerts."
+                    connectionsClient.disconnectFromEndpoint(endpointId)
+                    return
+                }
+
+                // Exchange Firebase UIDs after the Nearby connection succeeds.
+                // The peer is NOT treated as a connected group member until
+                // Firestore confirms that both users share at least one group.
+                connectionsClient
+                    .sendPayload(
+                        endpointId,
+                        Payload.fromBytes(myUid.toByteArray(Charsets.UTF_8))
+                    )
+                    .addOnFailureListener { exception ->
+                        _errorMessage.value =
+                            "Could not verify nearby member: ${exception.message}"
+                        connectionsClient.disconnectFromEndpoint(endpointId)
+                    }
+            }
+
+            override fun onDisconnected(
+                endpointId: String
+            ) {
+                _nearbyMembers.value =
+                    _nearbyMembers.value.filterNot {
+                        it.endpointId == endpointId
+                    }
+
+                _connectedMembers.value =
+                    _connectedMembers.value.filterNot {
+                        it.endpointId == endpointId
+                    }
+            }
+        }
 
     private val endpointDiscoveryCallback =
         object : EndpointDiscoveryCallback() {
@@ -49,21 +160,20 @@ class NearbyManager(
                 endpointId: String,
                 info: DiscoveredEndpointInfo
             ) {
-                val member = NearbyMember(
-                    endpointId = endpointId,
-                    endpointName = info.endpointName
-                )
+                val member =
+                    NearbyMember(
+                        endpointId = endpointId,
+                        endpointName = info.endpointName
+                    )
 
-                val updatedList =
+                _nearbyMembers.value =
                     _nearbyMembers.value
-                        .filterNot {
-                            it.endpointId == endpointId
-                        } + member
-
-                _nearbyMembers.value = updatedList
+                        .filterNot { it.endpointId == endpointId } + member
 
                 connectionsClient.requestConnection(
-                    "KnotUser",
+                    auth.currentUser?.displayName
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "KnotUser",
                     endpointId,
                     connectionLifecycleCallback
                 )
@@ -80,10 +190,8 @@ class NearbyManager(
         }
 
     fun startDiscovery() {
-
         val options =
-            com.google.android.gms.nearby.connection.DiscoveryOptions
-                .Builder()
+            DiscoveryOptions.Builder()
                 .setStrategy(strategy)
                 .build()
 
@@ -94,7 +202,6 @@ class NearbyManager(
                 options
             )
             .addOnSuccessListener {
-                println("Nearby discovery started")
                 _errorMessage.value = null
             }
             .addOnFailureListener { exception ->
@@ -102,67 +209,7 @@ class NearbyManager(
                     "Nearby discovery failed: ${exception.message}"
             }
     }
-    private val connectionLifecycleCallback =
-        object : ConnectionLifecycleCallback() {
 
-            override fun onConnectionInitiated(
-                endpointId: String,
-                connectionInfo: ConnectionInfo
-            ) {
-
-                connectionsClient.acceptConnection(
-                    endpointId,
-                    object : com.google.android.gms.nearby.connection.PayloadCallback() {
-                        override fun onPayloadReceived(
-                            endpointId: String,
-                            payload: com.google.android.gms.nearby.connection.Payload
-                        ) {
-                        }
-
-                        override fun onPayloadTransferUpdate(
-                            endpointId: String,
-                            update: com.google.android.gms.nearby.connection.PayloadTransferUpdate
-                        ) {
-                        }
-                    }
-                )
-            }
-
-            override fun onConnectionResult(
-                endpointId: String,
-                result: ConnectionResolution
-            ) {
-                if (result.status.isSuccess) {
-
-                    val member =
-                        _nearbyMembers.value.find {
-                            it.endpointId == endpointId
-                        }
-
-                    if (member != null) {
-                        _connectedMembers.value =
-                            _connectedMembers.value
-                                .filterNot {
-                                    it.endpointId == endpointId
-                                } + member
-                    }
-
-                    println("Nearby connection successful: $endpointId")
-
-                } else {
-                    println("Nearby connection failed: $endpointId")
-                }
-            }
-
-            override fun onDisconnected(
-                endpointId: String
-            ) {
-                _connectedMembers.value =
-                    _connectedMembers.value.filterNot {
-                        it.endpointId == endpointId
-                    }
-            }
-        }
     fun startAdvertising(
         userName: String
     ) {
@@ -179,7 +226,6 @@ class NearbyManager(
                 options
             )
             .addOnSuccessListener {
-                println("Nearby advertising started")
                 _errorMessage.value = null
             }
             .addOnFailureListener { exception ->
@@ -187,6 +233,97 @@ class NearbyManager(
                     "Nearby advertising failed: ${exception.message}"
             }
     }
+
+    private fun validateSharedGroup(
+        endpointId: String,
+        peerUid: String
+    ) {
+        val myUid = auth.currentUser?.uid
+
+        if (myUid.isNullOrBlank() || peerUid == myUid) {
+            connectionsClient.disconnectFromEndpoint(endpointId)
+            return
+        }
+
+        val myUserRef =
+            firestore.collection("users").document(myUid)
+
+        val peerUserRef =
+            firestore.collection("users").document(peerUid)
+
+        myUserRef.get()
+            .addOnSuccessListener { myDocument ->
+
+                val myGroupIds =
+                    (myDocument.get("groupIds") as? List<*>)
+                        ?.filterIsInstance<String>()
+                        ?.toSet()
+                        .orEmpty()
+
+                peerUserRef.get()
+                    .addOnSuccessListener peerSuccess@{ peerDocument ->
+
+                        val peerGroupIds =
+                            (peerDocument.get("groupIds") as? List<*>)
+                                ?.filterIsInstance<String>()
+                                ?.toSet()
+                                .orEmpty()
+
+                        val sharedGroupId =
+                            myGroupIds.intersect(peerGroupIds)
+                                .firstOrNull()
+
+                        if (sharedGroupId == null) {
+                            connectionsClient.disconnectFromEndpoint(endpointId)
+                            return@peerSuccess
+                        }
+
+                        val existingMember =
+                            _nearbyMembers.value.firstOrNull {
+                                it.endpointId == endpointId
+                            }
+
+                        val peerName =
+                            peerDocument.getString("displayName")
+                                ?.takeIf { it.isNotBlank() }
+                                ?: existingMember?.endpointName
+                                ?: "Group member"
+
+                        val verifiedMember =
+                            NearbyMember(
+                                endpointId = endpointId,
+                                endpointName = peerName,
+                                userId = peerUid,
+                                sharedGroupId = sharedGroupId
+                            )
+
+                        _nearbyMembers.value =
+                            _nearbyMembers.value
+                                .filterNot {
+                                    it.endpointId == endpointId
+                                } + verifiedMember
+
+                        _connectedMembers.value =
+                            _connectedMembers.value
+                                .filterNot {
+                                    it.endpointId == endpointId
+                                } + verifiedMember
+
+                        _errorMessage.value = null
+                    }
+                    .addOnFailureListener { exception ->
+                        _errorMessage.value =
+                            "Could not check nearby member's groups: ${exception.message}"
+                        connectionsClient.disconnectFromEndpoint(endpointId)
+                    }
+            }
+            .addOnFailureListener { exception ->
+                _errorMessage.value =
+                    "Could not check your groups: ${exception.message}"
+                connectionsClient.disconnectFromEndpoint(endpointId)
+            }
+    }
+
     fun stopNearby() {
         connectionsClient.stopDiscovery()
         connectionsClient.stopAdvertising()
@@ -194,5 +331,6 @@ class NearbyManager(
 
         _nearbyMembers.value = emptyList()
         _connectedMembers.value = emptyList()
+        _errorMessage.value = null
     }
 }
