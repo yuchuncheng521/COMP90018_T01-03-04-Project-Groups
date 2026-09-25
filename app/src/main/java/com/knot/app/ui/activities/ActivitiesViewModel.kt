@@ -106,6 +106,22 @@ class ActivitiesViewModel(
         nearbyManager.startDiscovery()
     }
 
+    fun simulateP2pConnection() {
+        uiState = uiState.copy(
+            p2pAlert = ActivityItem(
+                id = "p2p-simulated",
+                groupId = "test-group",
+                groupName = "Melbourne Uni Squad",
+                title = "test_user is nearby. Capture a memory together?",
+                description = "You're both here right now. Take a photo to save this moment.",
+                type = ActivityType.P2P_ALERT,
+                status = ActivityStatus.PENDING,
+                dueLabel = "Simulated connection · P2P"
+            ),
+            p2pAlertDismissed = false
+        )
+    }
+
     private fun observeNearbyMembers() {
         viewModelScope.launch {
             nearbyManager.connectedMembers.collect { members ->
@@ -114,9 +130,10 @@ class ActivitiesViewModel(
                     members.firstOrNull()?.let { member ->
                         ActivityItem(
                             id = "p2p-${member.endpointId}",
-                            groupName = "Nearby member",
-                            title = "You're near ${member.endpointName} right now!",
-                            description = "Capture this moment together before it's gone.",
+                            groupId = member.sharedGroupId.orEmpty(),
+                            groupName = "Shared group",
+                            title = "${member.endpointName} is nearby. Capture a memory together?",
+                            description = "You're both here right now. Take a photo to save this moment.",
                             type = ActivityType.P2P_ALERT,
                             status = ActivityStatus.PENDING,
                             dueLabel = "Detected just now · Nearby"
