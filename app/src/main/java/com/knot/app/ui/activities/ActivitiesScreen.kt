@@ -170,6 +170,9 @@ fun ActivitiesScreen(
                 selectedVideoPath = videoPath
                 showCamera = false
                 updateCurrentLocation()
+            },
+            onCancel = {
+                showCamera = false
             }
         )
 
@@ -183,6 +186,9 @@ fun ActivitiesScreen(
                 selectedAudioPath = audioPath
                 showAudioRecorder = false
                 updateCurrentLocation()
+            },
+            onCancel = {
+                showAudioRecorder = false
             }
         )
 
