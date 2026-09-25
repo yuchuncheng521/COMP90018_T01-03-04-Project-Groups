@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.AlertDialog
@@ -78,6 +81,7 @@ private fun GroupsListPreview() {
                 Group(id = "1", name = "The Family", memberCount = 5, lastActivitySummary = "Sarah posted 2 photos", unreadCount = 3),
                 Group(id = "2", name = "Uni Friends", memberCount = 8, lastActivitySummary = "", unreadCount = 0)
             ),
+            memberAvatarInfo = emptyMap(),
             onGroupClick = {}
         )
     }
@@ -90,6 +94,10 @@ fun GroupsScreen(
     onGroupClick: (Group) -> Unit = {}
 ) {
     val uiState = viewModel.uiState
+
+    LaunchedEffect(Unit) {
+        viewModel.loadGroups()
+    }
 
     Scaffold(
         containerColor = KnotCream,
@@ -120,7 +128,7 @@ fun GroupsScreen(
                 padding = padding,
                 onJoinClick = { viewModel.openJoinOrCreateSheet(JoinOrCreateMode.JOIN) }
             )
-            else -> GroupsList(padding, uiState.groups, onGroupClick)
+            else -> GroupsList(padding, uiState.groups, uiState.memberAvatarInfo, onGroupClick)
         }
     }
 
@@ -178,20 +186,29 @@ private fun EmptyGroupsState(padding: PaddingValues, onJoinClick: () -> Unit) {
 }
 
 @Composable
-private fun GroupsList(padding: PaddingValues, groups: List<Group>, onGroupClick: (Group) -> Unit) {
+private fun GroupsList(
+    padding: PaddingValues,
+    groups: List<Group>,
+    memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo>,
+    onGroupClick: (Group) -> Unit
+) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize().padding(padding)
     ) {
         items(groups, key = { it.id }) { group ->
-            GroupCard(group = group, onClick = { onGroupClick(group) })
+            GroupCard(group = group, memberAvatarInfo = memberAvatarInfo, onClick = { onGroupClick(group) })
         }
     }
 }
 
 @Composable
-private fun GroupCard(group: Group, onClick: () -> Unit) {
+private fun GroupCard(
+    group: Group,
+    memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo>,
+    onClick: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -214,8 +231,22 @@ private fun GroupCard(group: Group, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(top = 12.dp)
             ) {
-                items(group.memberCount) {
-                    MemberAvatarPlaceholder()
+                if (group.memberIds.isNotEmpty()) {
+                    items(group.memberIds) { memberId ->
+                        val info = memberAvatarInfo[memberId]
+                        if (info != null) {
+                            ColoredMemberAvatar(
+                                initial = info.displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                                colorHex = info.avatarColor
+                            )
+                        } else {
+                            MemberAvatarPlaceholder()
+                        }
+                    }
+                } else {
+                    items(group.memberCount) {
+                        MemberAvatarPlaceholder()
+                    }
                 }
             }
         }
@@ -230,6 +261,19 @@ private fun MemberAvatarPlaceholder() {
             CircleShape
         )
     )
+}
+
+@Composable
+private fun ColoredMemberAvatar(initial: String, colorHex: String) {
+    Box(
+        modifier = Modifier.size(56.dp).background(
+            Color(android.graphics.Color.parseColor(colorHex)),
+            CircleShape
+        ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = initial, color = Color.White, fontWeight = FontWeight.Bold)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

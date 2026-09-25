@@ -8,6 +8,7 @@ data class Group(
     val id: String = "",
     val name: String = "",
     val memberCount: Int = 0,
+    val memberIds: List<String> = emptyList(), // needed to list/remove specific members
     val memberAvatars: List<String> = emptyList(), // initials or image URLs, placeholder for now
     val lastActivitySummary: String = "",
     val unreadCount: Int = 0,
