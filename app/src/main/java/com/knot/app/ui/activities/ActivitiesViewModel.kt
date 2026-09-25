@@ -83,6 +83,23 @@ class ActivitiesViewModel(
         location: String?,
         onSuccess: () -> Unit
     ) {
+        // P2P activities are generated locally for now, so they do not have
+        // a matching Firestore activity document to update.
+        if (activityId.startsWith("p2p-local-")) {
+            uiState = uiState.copy(
+                activities = uiState.activities.map {
+                    if (it.id == activityId) {
+                        it.copy(status = ActivityStatus.COMPLETED)
+                    } else {
+                        it
+                    }
+                },
+                p2pAlertDismissed = true
+            )
+            onSuccess()
+            return
+        }
+
         uiState = uiState.copy(isLoading = true)
         viewModelScope.launch {
             val result = repository.saveActivityResponse(
@@ -107,17 +124,21 @@ class ActivitiesViewModel(
     }
 
     fun simulateP2pConnection() {
+        val activity = ActivityItem(
+            id = "p2p-local-simulated",
+            groupId = "test-group",
+            groupName = "Melbourne Uni Squad",
+            title = "What are you doing together right now?",
+            description = "test_user is nearby. Capture this moment with text, photo, audio, or video.",
+            type = ActivityType.P2P_ALERT,
+            status = ActivityStatus.PENDING,
+            dueLabel = "Created just now · Nearby"
+        )
+
         uiState = uiState.copy(
-            p2pAlert = ActivityItem(
-                id = "p2p-simulated",
-                groupId = "test-group",
-                groupName = "Melbourne Uni Squad",
-                title = "test_user is nearby. Capture a memory together?",
-                description = "You're both here right now. Take a photo to save this moment.",
-                type = ActivityType.P2P_ALERT,
-                status = ActivityStatus.PENDING,
-                dueLabel = "Simulated connection · P2P"
-            ),
+            activities = listOf(activity) +
+                    uiState.activities.filterNot { it.id == activity.id },
+            p2pAlert = activity,
             p2pAlertDismissed = false
         )
     }
@@ -126,24 +147,33 @@ class ActivitiesViewModel(
         viewModelScope.launch {
             nearbyManager.connectedMembers.collect { members ->
 
-                val alert =
+                val activity =
                     members.firstOrNull()?.let { member ->
                         ActivityItem(
-                            id = "p2p-${member.endpointId}",
+                            id = "p2p-local-${member.userId ?: member.endpointId}",
                             groupId = member.sharedGroupId.orEmpty(),
                             groupName = "Shared group",
-                            title = "${member.endpointName} is nearby. Capture a memory together?",
-                            description = "You're both here right now. Take a photo to save this moment.",
+                            title = "What are you doing together right now?",
+                            description = "${member.endpointName} is nearby. Capture this moment with text, photo, audio, or video.",
                             type = ActivityType.P2P_ALERT,
                             status = ActivityStatus.PENDING,
-                            dueLabel = "Detected just now · Nearby"
+                            dueLabel = "Created just now · Nearby"
                         )
                     }
 
-                uiState = uiState.copy(
-                    p2pAlert = alert,
-                    p2pAlertDismissed = false
-                )
+                if (activity == null) {
+                    uiState = uiState.copy(
+                        p2pAlert = null,
+                        p2pAlertDismissed = false
+                    )
+                } else {
+                    uiState = uiState.copy(
+                        activities = listOf(activity) +
+                                uiState.activities.filterNot { it.id == activity.id },
+                        p2pAlert = activity,
+                        p2pAlertDismissed = false
+                    )
+                }
             }
         }
     }
