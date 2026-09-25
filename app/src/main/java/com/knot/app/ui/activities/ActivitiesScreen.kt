@@ -275,7 +275,13 @@ fun ActivitiesScreen(
                         P2PAlertBanner(
                             alert = alert!!,
                             onRespond = {
-                                onActivityClick(alert)
+                                if (PermissionManager.hasCameraPermission(context)) {
+                                    showCamera = true
+                                } else {
+                                    cameraPermissionLauncher.launch(
+                                        Manifest.permission.CAMERA
+                                    )
+                                }
                             },
                             onDismiss = {
                                 viewModel.dismissP2pAlert()
@@ -319,24 +325,14 @@ fun ActivitiesScreen(
                 }
             }
 
-            //nearby
+            // Simulate a successful verified P2P connection without a second phone.
             item {
                 Button(
                     onClick = {
-                        if (PermissionManager.hasNearbyPermissions(context)) {
-                            viewModel.startNearby("KnotUser")
-                        } else {
-                            nearbyPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.BLUETOOTH_SCAN,
-                                    Manifest.permission.BLUETOOTH_CONNECT,
-                                    Manifest.permission.BLUETOOTH_ADVERTISE
-                                )
-                            )
-                        }
+                        viewModel.simulateP2pConnection()
                     }
                 ) {
-                    Text("Start Nearby")
+                    Text("Simulate nearby group member")
                 }
             }
         }
