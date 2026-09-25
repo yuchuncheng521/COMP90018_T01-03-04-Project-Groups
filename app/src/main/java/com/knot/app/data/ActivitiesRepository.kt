@@ -9,7 +9,7 @@ import kotlinx.coroutines.tasks.await
 import com.knot.app.nearby.NearbyManager
 
 /**
- * Loads the weekly prompts / quests assigned to the current user across all their groups.
+ * Loads the weekly prompts / activities assigned to the current user across all their groups.
  *
  * STUB: reads from an "activities" Firestore collection. The real P2P (BLE proximity) alert
  * described in the project plan is a separate on-device signal (Nearby Connections API /
@@ -41,7 +41,7 @@ class ActivitiesRepository(
                     description = doc.getString("description") ?: "",
                     type = runCatching { ActivityType.valueOf(doc.getString("type") ?: "") }.getOrDefault(ActivityType.WEEKLY_PROMPT),
                     status = runCatching { ActivityStatus.valueOf(doc.getString("status") ?: "") }.getOrDefault(ActivityStatus.PENDING),
-                    dueLabel = doc.getString("dueLabel") ?: ""
+                    dueLabel = doc.getString("dueLabel") ?: "",
                 )
             }.ifEmpty { sampleActivities }
         }.getOrElse { sampleActivities }
@@ -59,13 +59,43 @@ class ActivitiesRepository(
 
         return ActivityItem(
             id = "p2p-${connectedMember.endpointId}",
-            groupName = "Nearby member",
-            title = "You're near ${connectedMember.endpointName} right now!",
-            description = "Capture this moment together before it's gone.",
+            groupId = connectedMember.sharedGroupId.orEmpty(),
+            groupName = "Shared group",
+            title = "${connectedMember.endpointName} is nearby. Capture a memory together?",
+            description = "You're both here right now. Take a photo to save this moment.",
             type = ActivityType.P2P_ALERT,
             status = ActivityStatus.PENDING,
             dueLabel = "Detected just now · Nearby"
         )
+    }
+
+    suspend fun updateActivityStatus(activityId: String, status: ActivityStatus): Result<Unit> = runCatching {
+        firestore.collection("activities").document(activityId).update("status", status.name).await()
+    }
+
+    suspend fun saveActivityResponse(
+        activityId: String,
+        text: String,
+        photoPath: String?,
+        videoPath: String?,
+        audioPath: String?,
+        location: String?
+    ): Result<Unit> = runCatching {
+        val uid = auth.currentUser?.uid ?: error("Not logged in")
+        val response = mapOf(
+            "activityId" to activityId,
+            "userId" to uid,
+            "text" to text,
+            "photoPath" to photoPath,
+            "videoPath" to videoPath,
+            "audioPath" to audioPath,
+            "location" to location,
+            "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+        )
+        firestore.collection("activity_responses").add(response).await()
+        
+        // After saving response, mark activity as completed
+        updateActivityStatus(activityId, ActivityStatus.COMPLETED).getOrThrow()
     }
 
     companion object {
@@ -103,7 +133,7 @@ class ActivitiesRepository(
                 groupName = "Sarah & Qin Yu",
                 title = "Design your cover page for this month",
                 description = "Draw or decorate this month's memory page.",
-                type = ActivityType.QUEST,
+                type = ActivityType.ACTIVITY,
                 status = ActivityStatus.COMPLETED,
                 dueLabel = "Completed"
             )

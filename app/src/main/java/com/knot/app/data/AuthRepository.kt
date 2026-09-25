@@ -5,9 +5,8 @@ import com.knot.app.notifications.FcmTokenManager
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Handles sign in, sign up, sign out, and password reset.
- * This class doesn't talk to Firebase directly — [FirebaseAuthDataSource] and [UserProfileDataSource] do that.
- * Keeping them separate makes it possible to test this class with fake data instead of a real Firebase connection.
+ * Handles authentication and account operations through data sources.
+ * Keeping Firebase access behind data-source interfaces makes the repository easier to test.
  */
 class AuthRepository(
     private val authDataSource: FirebaseAuthDataSource = FirebaseAuthDataSourceImpl(),
@@ -28,7 +27,11 @@ class AuthRepository(
         user
     }
 
-    suspend fun signUp(displayName: String, email: String, password: String): Result<UserAccount> = runCatching {
+    suspend fun signUp(
+        displayName: String,
+        email: String,
+        password: String
+    ): Result<UserAccount> = runCatching {
         val user = authDataSource.signUp(displayName.trim(), email.trim(), password)
         profileDataSource.createProfile(user)
         FcmTokenManager.syncCurrentToken()
@@ -41,5 +44,29 @@ class AuthRepository(
 
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> = runCatching {
         authDataSource.sendPasswordResetEmail(email.trim())
+    }
+
+    suspend fun updateDisplayName(name: String): Result<Unit> = runCatching {
+        val user = currentUser ?: error("Not logged in")
+        val trimmedName = name.trim()
+
+        authDataSource.updateDisplayName(trimmedName)
+        profileDataSource.updateDisplayName(user.uid, trimmedName)
+    }
+
+    suspend fun updateEmail(newEmail: String): Result<Unit> = runCatching {
+        authDataSource.updateEmail(newEmail.trim())
+    }
+
+    suspend fun updatePassword(newPassword: String): Result<Unit> = runCatching {
+        authDataSource.updatePassword(newPassword)
+    }
+
+    suspend fun deleteAccount(email: String, password: String): Result<Unit> = runCatching {
+        val user = currentUser ?: error("Not logged in")
+
+        authDataSource.reauthenticate(email.trim(), password)
+        profileDataSource.deleteProfile(user.uid)
+        authDataSource.deleteAccount()
     }
 }

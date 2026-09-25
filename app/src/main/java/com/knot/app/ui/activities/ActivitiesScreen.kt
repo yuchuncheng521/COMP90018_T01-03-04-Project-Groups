@@ -4,7 +4,6 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +11,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -40,11 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.unit.sp
+import com.knot.app.R
 import com.knot.app.location.LocationManager
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
@@ -52,21 +54,16 @@ import com.knot.app.permissions.PermissionManager
 import com.knot.app.ui.audio.AudioRecorderScreen
 import com.knot.app.ui.camera.CameraScreen
 import com.knot.app.ui.components.P2PAlertBanner
+import com.knot.app.ui.theme.KnotCream
+import com.knot.app.ui.theme.KnotDarkBrown
 import kotlinx.coroutines.launch
-import java.io.File
-import android.media.MediaPlayer
-import android.net.Uri
-import android.widget.MediaController
-import android.widget.VideoView
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.viewinterop.AndroidView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivitiesScreen(
     viewModel: ActivitiesViewModel,
-    onActivityClick: (ActivityItem) -> Unit = {}
-
+    onActivityClick: (ActivityItem) -> Unit = {},
+    onCreateClick: () -> Unit = {},
 ) {
     val uiState = viewModel.uiState
     val context = LocalContext.current
@@ -173,6 +170,9 @@ fun ActivitiesScreen(
                 selectedVideoPath = videoPath
                 showCamera = false
                 updateCurrentLocation()
+            },
+            onCancel = {
+                showCamera = false
             }
         )
 
@@ -186,6 +186,9 @@ fun ActivitiesScreen(
                 selectedAudioPath = audioPath
                 showAudioRecorder = false
                 updateCurrentLocation()
+            },
+            onCancel = {
+                showAudioRecorder = false
             }
         )
 
@@ -196,7 +199,7 @@ fun ActivitiesScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Your activities")
+                    Text("Activities", fontSize = 38.sp)
                 }
             )
         }
@@ -225,159 +228,33 @@ fun ActivitiesScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-
-            // -------------------------
-            // Camera
-            // -------------------------
-
             item {
-                Button(
-                    onClick = {
-                        if (PermissionManager.hasCameraPermission(context)) {
-                            showCamera = true
-                        } else {
-                            cameraPermissionLauncher.launch(
-                                Manifest.permission.CAMERA
-                            )
-                        }
-                    }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("Open Camera")
-                }
-            }
-
-            // Selected photo
-            if (selectedPhotoPath != null) {
-                item {
-                    Column {
-                        Text("Selected photo")
-
-                        Image(
-                            painter = rememberAsyncImagePainter(
-                                model = File(selectedPhotoPath!!)
-                            ),
-                            contentDescription = "Selected photo",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(220.dp),
-                            contentScale = ContentScale.Crop
-                        )
-
-                        Button(
-                            onClick = {
-                                showCamera = true
-                            }
-                        ) {
-                            Text("Change Photo")
-                        }
+                    Button(
+                        onClick = { /* Already on Quests/Activities */ },
+                        modifier = Modifier.weight(1f),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = KnotDarkBrown,
+                            contentColor = KnotCream
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text("ACTIVITIES", fontWeight = FontWeight.Bold)
                     }
-                }
-            }
-
-            // Selected video
-            if (selectedVideoPath != null) {
-                item {
-                    Column {
-                        Text("Selected video")
-
-                        VideoPreview(
-                            videoPath = selectedVideoPath!!
-                        )
-
-
-                        Text(
-                            text = File(selectedVideoPath!!).name,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-
-                        Button(
-                            onClick = {
-                                showCamera = true
-                            }
-                        ) {
-                            Text("Change Video")
-                        }
+                    OutlinedButton(
+                        onClick = onCreateClick,
+                        modifier = Modifier.weight(1f),
+                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                            contentColor = KnotDarkBrown
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, KnotDarkBrown)
+                    ) {
+                        Text("CREATE", fontWeight = FontWeight.Bold)
                     }
-                }
-            }
-
-            // -------------------------
-            // Audio
-            // -------------------------
-
-            item {
-                Button(
-                    onClick = {
-                        if (
-                            PermissionManager.hasMicrophonePermission(context)
-                        ) {
-                            showAudioRecorder = true
-                        } else {
-                            microphonePermissionLauncher.launch(
-                                Manifest.permission.RECORD_AUDIO
-                            )
-                        }
-                    }
-                ) {
-                    Text("Record Audio")
-                }
-            }
-
-            // Selected audio
-            if (selectedAudioPath != null) {
-                item {
-                    Column {
-                        Text("Selected audio")
-
-                        Text(
-                            text = File(selectedAudioPath!!).name,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        AudioPreview(
-                            audioPath = selectedAudioPath!!
-                        )
-
-                        Button(
-                            onClick = {
-                                showAudioRecorder = true
-                            }
-                        ) {
-                            Text("Change Audio")
-                        }
-                    }
-                }
-            }
-
-            // -------------------------
-            // Location
-            // -------------------------
-
-            item {
-                Button(
-                    onClick = {
-                        if (
-                            PermissionManager.hasLocationPermission(context)
-                        ) {
-                            updateCurrentLocation()
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        }
-                    }
-                ) {
-                    Text("Get Current Location")
-                }
-            }
-
-            if (currentLocationText != null) {
-                item {
-                    Text(
-                        text = "Your current location is: $currentLocationText"
-                    )
                 }
             }
 
@@ -386,11 +263,9 @@ fun ActivitiesScreen(
             // -------------------------
 
             val alert = uiState.p2pAlert
+            val showP2pAlert = (alert != null && !uiState.p2pAlertDismissed)
 
-            if (
-                alert != null &&
-                !uiState.p2pAlertDismissed
-            ) {
+            if (showP2pAlert) {
                 item(
                     key = "p2p-alert"
                 ) {
@@ -398,7 +273,7 @@ fun ActivitiesScreen(
                         visible = true
                     ) {
                         P2PAlertBanner(
-                            alert = alert,
+                            alert = alert!!,
                             onRespond = {
                                 onActivityClick(alert)
                             },
@@ -444,24 +319,14 @@ fun ActivitiesScreen(
                 }
             }
 
-            //nearby
+            // Simulate a successful verified P2P connection without a second phone.
             item {
                 Button(
                     onClick = {
-                        if (PermissionManager.hasNearbyPermissions(context)) {
-                            viewModel.startNearby("KnotUser")
-                        } else {
-                            nearbyPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.BLUETOOTH_SCAN,
-                                    Manifest.permission.BLUETOOTH_CONNECT,
-                                    Manifest.permission.BLUETOOTH_ADVERTISE
-                                )
-                            )
-                        }
+                        viewModel.simulateP2pConnection()
                     }
                 ) {
-                    Text("Start Nearby")
+                    Text("Simulate nearby group member")
                 }
             }
         }
@@ -473,7 +338,7 @@ fun ActivitiesScreen(
 private fun ActivityCard(
     activity: ActivityItem,
     onClick: () -> Unit,
-    onToggleComplete: () -> Unit
+    onToggleComplete: () -> Unit,
 ) {
     val isCompleted =
         activity.status == ActivityStatus.COMPLETED
@@ -483,7 +348,7 @@ private fun ActivityCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor =
-                MaterialTheme.colorScheme.surfaceVariant
+                MaterialTheme.colorScheme.surfaceVariant,
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -562,80 +427,13 @@ private fun ActivityCard(
                     )
                 }
             }
-        }
-    }
-}
-@Composable
-private fun VideoPreview(
-    videoPath: String
-) {
-    val context = LocalContext.current
 
-    AndroidView(
-        factory = { ctx ->
-            VideoView(ctx).apply {
-
-                val mediaController = MediaController(ctx)
-                mediaController.setAnchorView(this)
-
-                setMediaController(mediaController)
-
-                setVideoURI(
-                    Uri.fromFile(
-                        File(videoPath)
-                    )
-                )
-
-                setOnPreparedListener { mediaPlayer ->
-                    mediaPlayer.isLooping = false
-                }
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-    )
-}
-@Composable
-private fun AudioPreview(
-    audioPath: String
-) {
-    val context = LocalContext.current
-
-    val mediaPlayer = remember(audioPath) {
-        MediaPlayer().apply {
-            setDataSource(audioPath)
-            prepare()
-        }
-    }
-
-    var isPlaying by remember {
-        mutableStateOf(false)
-    }
-
-    Button(
-        onClick = {
-            if (isPlaying) {
-                mediaPlayer.pause()
-                isPlaying = false
-            } else {
-                mediaPlayer.start()
-                isPlaying = true
-            }
-        }
-    ) {
-        Text(
-            if (isPlaying) {
-                "Pause Audio"
-            } else {
-                "Play Audio"
-            }
-        )
-    }
-
-    DisposableEffect(mediaPlayer) {
-        onDispose {
-            mediaPlayer.release()
+            Icon(
+                painter = painterResource(id = R.drawable.right_arrow),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
