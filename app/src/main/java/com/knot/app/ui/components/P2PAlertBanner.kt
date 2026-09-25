@@ -97,7 +97,7 @@ fun P2PAlertBanner(
                 horizontalArrangement = Arrangement.End
             ) {
                 Button(onClick = onRespond) {
-                    Text("Capture the moment")
+                    Text("Open activity")
                 }
             }
         }

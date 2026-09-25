@@ -83,6 +83,23 @@ class ActivitiesViewModel(
         location: String?,
         onSuccess: () -> Unit
     ) {
+        // P2P activities are generated locally for now, so they do not have
+        // a matching Firestore activity document to update.
+        if (activityId.startsWith("p2p-local-")) {
+            uiState = uiState.copy(
+                activities = uiState.activities.map {
+                    if (it.id == activityId) {
+                        it.copy(status = ActivityStatus.COMPLETED)
+                    } else {
+                        it
+                    }
+                },
+                p2pAlertDismissed = true
+            )
+            onSuccess()
+            return
+        }
+
         uiState = uiState.copy(isLoading = true)
         viewModelScope.launch {
             val result = repository.saveActivityResponse(
@@ -106,27 +123,57 @@ class ActivitiesViewModel(
         nearbyManager.startDiscovery()
     }
 
+    fun simulateP2pConnection() {
+        val activity = ActivityItem(
+            id = "p2p-local-simulated",
+            groupId = "test-group",
+            groupName = "Melbourne Uni Squad",
+            title = "What are you doing together right now?",
+            description = "test_user is nearby. Capture this moment with text, photo, audio, or video.",
+            type = ActivityType.P2P_ALERT,
+            status = ActivityStatus.PENDING,
+            dueLabel = "Created just now · Nearby"
+        )
+
+        uiState = uiState.copy(
+            activities = listOf(activity) +
+                    uiState.activities.filterNot { it.id == activity.id },
+            p2pAlert = activity,
+            p2pAlertDismissed = false
+        )
+    }
+
     private fun observeNearbyMembers() {
         viewModelScope.launch {
             nearbyManager.connectedMembers.collect { members ->
 
-                val alert =
+                val activity =
                     members.firstOrNull()?.let { member ->
                         ActivityItem(
-                            id = "p2p-${member.endpointId}",
-                            groupName = "Nearby member",
-                            title = "You're near ${member.endpointName} right now!",
-                            description = "Capture this moment together before it's gone.",
+                            id = "p2p-local-${member.userId ?: member.endpointId}",
+                            groupId = member.sharedGroupId.orEmpty(),
+                            groupName = "Shared group",
+                            title = "What are you doing together right now?",
+                            description = "${member.endpointName} is nearby. Capture this moment with text, photo, audio, or video.",
                             type = ActivityType.P2P_ALERT,
                             status = ActivityStatus.PENDING,
-                            dueLabel = "Detected just now · Nearby"
+                            dueLabel = "Created just now · Nearby"
                         )
                     }
 
-                uiState = uiState.copy(
-                    p2pAlert = alert,
-                    p2pAlertDismissed = false
-                )
+                if (activity == null) {
+                    uiState = uiState.copy(
+                        p2pAlert = null,
+                        p2pAlertDismissed = false
+                    )
+                } else {
+                    uiState = uiState.copy(
+                        activities = listOf(activity) +
+                                uiState.activities.filterNot { it.id == activity.id },
+                        p2pAlert = activity,
+                        p2pAlertDismissed = false
+                    )
+                }
             }
         }
     }
