@@ -5,9 +5,8 @@ import com.knot.app.notifications.FcmTokenManager
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Handles sign in, sign up, sign out, and password reset.
- * This class doesn't talk to Firebase directly — [FirebaseAuthDataSource] and [UserProfileDataSource] do that.
- * Keeping them separate makes it possible to test this class with fake data instead of a real Firebase connection.
+ * Handles authentication and account operations through data sources.
+ * Keeping Firebase access behind data-source interfaces makes the repository easier to test.
  */
 class AuthRepository(
     private val authDataSource: FirebaseAuthDataSource = FirebaseAuthDataSourceImpl(),
@@ -28,7 +27,11 @@ class AuthRepository(
         user
     }
 
-    suspend fun signUp(displayName: String, email: String, password: String): Result<UserAccount> = runCatching {
+    suspend fun signUp(
+        displayName: String,
+        email: String,
+        password: String
+    ): Result<UserAccount> = runCatching {
         val user = authDataSource.signUp(displayName.trim(), email.trim(), password)
         profileDataSource.createProfile(user)
         FcmTokenManager.syncCurrentToken()
@@ -44,42 +47,26 @@ class AuthRepository(
     }
 
     suspend fun updateDisplayName(name: String): Result<Unit> = runCatching {
-        val user = auth.currentUser ?: error("Not logged in")
-        val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
-            .setDisplayName(name)
-            .build()
-        user.updateProfile(profileUpdates).await()
+        val user = currentUser ?: error("Not logged in")
+        val trimmedName = name.trim()
 
-        // Sync to Firestore
-        firestore.collection("users").document(user.uid).update("displayName", name).await()
+        authDataSource.updateDisplayName(trimmedName)
+        profileDataSource.updateDisplayName(user.uid, trimmedName)
     }
 
     suspend fun updateEmail(newEmail: String): Result<Unit> = runCatching {
-        val user = auth.currentUser ?: error("Not logged in")
-        // Note: verifyBeforeUpdateEmail is preferred as it sends a verification email 
-        // to the new address before actually changing it.
-        user.verifyBeforeUpdateEmail(newEmail).await()
-
-        // Sync to Firestore
-        firestore.collection("users").document(user.uid).update("email", newEmail).await()
+        authDataSource.updateEmail(newEmail.trim())
     }
 
     suspend fun updatePassword(newPassword: String): Result<Unit> = runCatching {
-        val user = auth.currentUser ?: error("Not logged in")
-        user.updatePassword(newPassword).await()
+        authDataSource.updatePassword(newPassword)
     }
 
     suspend fun deleteAccount(email: String, password: String): Result<Unit> = runCatching {
-        val user = auth.currentUser ?: error("Not logged in")
-        
-        // Re-authenticate before deletion
-        val credentials = com.google.firebase.auth.EmailAuthProvider.getCredential(email, password)
-        user.reauthenticate(credentials).await()
-        
-        // Delete from Firestore
-        firestore.collection("users").document(user.uid).delete().await()
-        
-        // Delete from Auth
-        user.delete().await()
+        val user = currentUser ?: error("Not logged in")
+
+        authDataSource.reauthenticate(email.trim(), password)
+        profileDataSource.deleteProfile(user.uid)
+        authDataSource.deleteAccount()
     }
 }
