@@ -11,7 +11,9 @@ import androidx.lifecycle.viewModelScope
 import com.knot.app.KnotApplication
 import com.knot.app.data.AuthRepository
 import com.knot.app.model.UserAccount
+import com.knot.app.location.LocationPreferences
 import com.knot.app.nearby.NearbyForegroundService
+import com.knot.app.notifications.NotificationPreferences
 import kotlinx.coroutines.launch
 
 data class AccountSettingsUiState(
@@ -21,7 +23,7 @@ data class AccountSettingsUiState(
     ),
     val notificationsEnabled: Boolean = true,
     val weeklyPromptRemindersEnabled: Boolean = true,
-    val p2pAlertsEnabled: Boolean = true,
+    val p2pAlertsEnabled: Boolean = false,
     val shareLocationWithMemories: Boolean = true,
     val nearbyError: String? = null
 )
@@ -41,7 +43,11 @@ class AccountSettingsViewModel(
                 ?: UserAccount(
                     displayName = "Guest",
                     email = "Not signed in"
-                )
+                ),
+            notificationsEnabled =
+                NotificationPreferences.isPushEnabled(application),
+            shareLocationWithMemories =
+                LocationPreferences.isAttachLocationEnabled(application)
         )
     )
         private set
@@ -63,6 +69,11 @@ class AccountSettingsViewModel(
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
+        NotificationPreferences.setPushEnabled(
+            getApplication(),
+            enabled
+        )
+
         uiState = uiState.copy(
             notificationsEnabled = enabled
         )
@@ -85,6 +96,11 @@ class AccountSettingsViewModel(
     }
 
     fun setShareLocationWithMemories(enabled: Boolean) {
+        LocationPreferences.setAttachLocationEnabled(
+            getApplication(),
+            enabled
+        )
+
         uiState = uiState.copy(
             shareLocationWithMemories = enabled
         )

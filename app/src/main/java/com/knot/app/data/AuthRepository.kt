@@ -1,6 +1,7 @@
 package com.knot.app.data
 
 import com.knot.app.model.UserAccount
+import com.knot.app.notifications.FcmTokenManager
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -22,12 +23,15 @@ class AuthRepository(
     fun authStateFlow(): Flow<UserAccount?> = authDataSource.authStateFlow()
 
     suspend fun signIn(email: String, password: String): Result<UserAccount> = runCatching {
-        authDataSource.signIn(email.trim(), password)
+        val user = authDataSource.signIn(email.trim(), password)
+        FcmTokenManager.syncCurrentToken()
+        user
     }
 
     suspend fun signUp(displayName: String, email: String, password: String): Result<UserAccount> = runCatching {
         val user = authDataSource.signUp(displayName.trim(), email.trim(), password)
         profileDataSource.createProfile(user)
+        FcmTokenManager.syncCurrentToken()
         user
     }
 

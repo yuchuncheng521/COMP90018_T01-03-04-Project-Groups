@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import android.Manifest
 import android.os.Build
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +57,26 @@ fun AccountSettingsScreen(
     LaunchedEffect(Unit) {
         if (!PermissionManager.isBluetoothEnabled(context)) {
             viewModel.setP2pAlertsEnabled(false)
+        }
+
+        val notificationsAllowed =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+
+        if (!notificationsAllowed && uiState.notificationsEnabled) {
+            viewModel.setNotificationsEnabled(false)
+        }
+
+        if (!PermissionManager.hasLocationPermission(context) &&
+            uiState.shareLocationWithMemories
+        ) {
+            viewModel.setShareLocationWithMemories(false)
         }
     }
 
@@ -97,6 +119,40 @@ fun AccountSettingsScreen(
             context.unregisterReceiver(receiver)
         }
     }
+
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            viewModel.setNotificationsEnabled(granted)
+
+            if (!granted) {
+                Toast.makeText(
+                    context,
+                    "Notification permission is required to receive push notifications.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val granted =
+                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                        permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+            viewModel.setShareLocationWithMemories(granted)
+
+            if (!granted) {
+                Toast.makeText(
+                    context,
+                    "Location permission is required to attach location to memories.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
     val nearbyPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -172,7 +228,27 @@ fun AccountSettingsScreen(
                     title = "Push notifications",
                     subtitle = "Get notified about new prompts and replies",
                     checked = uiState.notificationsEnabled,
-                    onCheckedChange = viewModel::setNotificationsEnabled
+                    onCheckedChange = { enabled ->
+                        if (!enabled) {
+                            viewModel.setNotificationsEnabled(false)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            val alreadyGranted =
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                            if (alreadyGranted) {
+                                viewModel.setNotificationsEnabled(true)
+                            } else {
+                                notificationPermissionLauncher.launch(
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                            }
+                        } else {
+                            viewModel.setNotificationsEnabled(true)
+                        }
+                    }
                 )
             }
 
@@ -280,7 +356,20 @@ fun AccountSettingsScreen(
                     title = "Attach location to memories",
                     subtitle = "Store where a memory happened along with the date",
                     checked = uiState.shareLocationWithMemories,
-                    onCheckedChange = viewModel::setShareLocationWithMemories
+                    onCheckedChange = { enabled ->
+                        if (!enabled) {
+                            viewModel.setShareLocationWithMemories(false)
+                        } else if (PermissionManager.hasLocationPermission(context)) {
+                            viewModel.setShareLocationWithMemories(true)
+                        } else {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        }
+                    }
                 )
             }
 

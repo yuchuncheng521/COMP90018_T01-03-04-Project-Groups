@@ -3,6 +3,7 @@ package com.knot.app
 import android.app.Application
 import com.google.firebase.FirebaseApp
 import com.knot.app.nearby.NearbyManager
+import com.knot.app.notifications.FcmTokenManager
 
 /**
  * Application entry point. Initializes Firebase once for the whole app.
@@ -32,5 +33,7 @@ class KnotApplication : Application() {
         }
 
         nearbyManager = NearbyManager(applicationContext)
+
+        FcmTokenManager.syncCurrentToken()
     }
 }
