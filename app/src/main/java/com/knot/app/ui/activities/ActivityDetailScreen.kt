@@ -76,7 +76,8 @@ fun ActivityDetailScreen(
         coroutineScope.launch {
             val location = locationManager.getCurrentLocation()
             currentLocationText = if (location != null) {
-                "Lat: ${location.latitude}, Lng: ${location.longitude}"
+                locationManager.getLocationName(location)
+                    ?: "Location detected"
             } else {
                 "Location unavailable"
             }
