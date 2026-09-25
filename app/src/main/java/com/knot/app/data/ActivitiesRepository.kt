@@ -59,9 +59,10 @@ class ActivitiesRepository(
 
         return ActivityItem(
             id = "p2p-${connectedMember.endpointId}",
-            groupName = "Nearby member",
-            title = "You're near ${connectedMember.endpointName} right now!",
-            description = "Capture this moment together before it's gone.",
+            groupId = connectedMember.sharedGroupId.orEmpty(),
+            groupName = "Shared group",
+            title = "${connectedMember.endpointName} is nearby. Capture a memory together?",
+            description = "You're both here right now. Take a photo to save this moment.",
             type = ActivityType.P2P_ALERT,
             status = ActivityStatus.PENDING,
             dueLabel = "Detected just now · Nearby"
