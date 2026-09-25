@@ -1,5 +1,8 @@
 package com.knot.app.ui.activities
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,27 +27,36 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import com.knot.app.model.ActivityItem
-import com.knot.app.model.ActivityStatus
-import com.knot.app.ui.components.P2PAlertBanner
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.ui.text.font.FontWeight
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotCream
-
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.sp
 import com.knot.app.R
+import com.knot.app.location.LocationManager
+import com.knot.app.model.ActivityItem
+import com.knot.app.model.ActivityStatus
+import com.knot.app.permissions.PermissionManager
+import com.knot.app.ui.audio.AudioRecorderScreen
+import com.knot.app.ui.camera.CameraScreen
+import com.knot.app.ui.components.P2PAlertBanner
+import com.knot.app.ui.theme.KnotCream
+import com.knot.app.ui.theme.KnotDarkBrown
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
