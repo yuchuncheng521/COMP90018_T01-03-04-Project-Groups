@@ -275,13 +275,7 @@ fun ActivitiesScreen(
                         P2PAlertBanner(
                             alert = alert!!,
                             onRespond = {
-                                if (PermissionManager.hasCameraPermission(context)) {
-                                    showCamera = true
-                                } else {
-                                    cameraPermissionLauncher.launch(
-                                        Manifest.permission.CAMERA
-                                    )
-                                }
+                                onActivityClick(alert)
                             },
                             onDismiss = {
                                 viewModel.dismissP2pAlert()
