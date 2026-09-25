@@ -17,15 +17,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +56,7 @@ import com.knot.app.model.Group
 import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotTheme
+
 
 @Preview(showBackground = true)
 @Composable
@@ -68,21 +74,6 @@ private fun EmptyGroupsStatePreview() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun GroupsListPreview() {
-    KnotTheme {
-        GroupsList(
-            padding = PaddingValues(),
-            groups = listOf(
-                Group(id = "1", name = "The Family", memberCount = 5, lastActivitySummary = "Sarah posted 2 photos", unreadCount = 3),
-                Group(id = "2", name = "Uni Friends", memberCount = 8, lastActivitySummary = "", unreadCount = 0)
-            ),
-            onGroupClick = {}
-        )
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupsScreen(
@@ -90,6 +81,9 @@ fun GroupsScreen(
     onGroupClick: (Group) -> Unit = {}
 ) {
     val uiState = viewModel.uiState
+    var pendingLeaveGroup by remember { mutableStateOf<Group?>(null) }
+    var pendingDeleteGroup by remember { mutableStateOf<Group?>(null) }
+    var pendingRemoveMember by remember { mutableStateOf<Triple<Group, String, String>?>(null) }
 
     Scaffold(
         containerColor = KnotCream,
@@ -120,7 +114,17 @@ fun GroupsScreen(
                 padding = padding,
                 onJoinClick = { viewModel.openJoinOrCreateSheet(JoinOrCreateMode.JOIN) }
             )
-            else -> GroupsList(padding, uiState.groups, onGroupClick)
+            else -> GroupsList(
+                padding = padding,
+                groups = uiState.groups,
+                currentUserId = viewModel.currentUserId,
+                onGroupClick = onGroupClick,
+                onLeaveGroup = { group -> pendingLeaveGroup = group },
+                onDeleteGroup = { group -> pendingDeleteGroup = group },
+                onRemoveMember = { group, memberId, memberName ->
+                    pendingRemoveMember = Triple(group, memberId, memberName)
+                }
+            )
         }
     }
 
@@ -138,6 +142,47 @@ fun GroupsScreen(
 
     uiState.justCreatedGroup?.let { group ->
         InviteCodeDialog(group = group, onDismiss = { viewModel.dismissJustCreatedBanner() })
+    }
+
+    uiState.actionError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissActionError() },
+            title = { Text("Something went wrong") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissActionError() }) { Text("OK") }
+            }
+        )
+    }
+
+    pendingLeaveGroup?.let { group ->
+        ConfirmActionDialog(
+            title = "Leave \"${group.name}\"?",
+            message = "You'll need a new invite code to rejoin this group later.",
+            confirmLabel = "Leave",
+            onConfirm = { viewModel.leaveGroup(group.id); pendingLeaveGroup = null },
+            onDismiss = { pendingLeaveGroup = null }
+        )
+    }
+
+    pendingDeleteGroup?.let { group ->
+        ConfirmActionDialog(
+            title = "Delete \"${group.name}\"?",
+            message = "This removes the group for everyone. This can't be undone.",
+            confirmLabel = "Delete",
+            onConfirm = { viewModel.deleteGroup(group.id); pendingDeleteGroup = null },
+            onDismiss = { pendingDeleteGroup = null }
+        )
+    }
+
+    pendingRemoveMember?.let { (group, memberId, memberName) ->
+        ConfirmActionDialog(
+            title = "Remove $memberName?",
+            message = "They'll lose access to \"${group.name}\" and its memories.",
+            confirmLabel = "Remove",
+            onConfirm = { viewModel.removeMember(group.id, memberId); pendingRemoveMember = null },
+            onDismiss = { pendingRemoveMember = null }
+        )
     }
 }
 
@@ -178,48 +223,177 @@ private fun EmptyGroupsState(padding: PaddingValues, onJoinClick: () -> Unit) {
 }
 
 @Composable
-private fun GroupsList(padding: PaddingValues, groups: List<Group>, onGroupClick: (Group) -> Unit) {
+private fun GroupsList(
+    padding: PaddingValues,
+    groups: List<Group>,
+    currentUserId: String,
+    onGroupClick: (Group) -> Unit,
+    onLeaveGroup: (Group) -> Unit,
+    onDeleteGroup: (Group) -> Unit,
+    onRemoveMember: (Group, String, String) -> Unit
+) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize().padding(padding)
     ) {
         items(groups, key = { it.id }) { group ->
-            GroupCard(group = group, onClick = { onGroupClick(group) })
+            GroupCard(
+                group = group,
+                currentUserId = currentUserId,
+                onClick = { onGroupClick(group) },
+                onLeaveGroup = { onLeaveGroup(group) },
+                onDeleteGroup = { onDeleteGroup(group) },
+                onRemoveMember = { memberId, memberName -> onRemoveMember(group, memberId, memberName) }
+            )
         }
     }
 }
 
 @Composable
-private fun GroupCard(group: Group, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                text = group.name,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = "${group.memberCount} Members",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(top = 12.dp)
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(top = 12.dp)
-            ) {
-                items(group.memberCount) {
-                    MemberAvatarPlaceholder()
+private fun GroupCard(
+    group: Group,
+    currentUserId: String,
+    onClick: () -> Unit,
+    onLeaveGroup: () -> Unit,
+    onDeleteGroup: () -> Unit,
+    onRemoveMember: (memberId: String, memberName: String) -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showRemoveMemberPicker by remember { mutableStateOf(false) }
+    val isOwner = currentUserId == group.ownerId
+
+    Box {
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = "${group.memberCount} Members",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(top = 12.dp)
+                ) {
+                    items(group.memberCount) {
+                        MemberAvatarPlaceholder()
+                    }
                 }
             }
         }
+
+        IconButton(
+            onClick = { showMenu = true },
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = "Group options",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
+        }
+
+        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            if (isOwner) {
+                DropdownMenuItem(
+                    text = { Text("Remove a member") },
+                    onClick = { showMenu = false; showRemoveMemberPicker = true }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete group") },
+                    onClick = { showMenu = false; onDeleteGroup() }
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text("Leave group") },
+                    onClick = { showMenu = false; onLeaveGroup() }
+                )
+            }
+        }
     }
+
+    if (showRemoveMemberPicker) {
+        RemoveMemberDialog(
+            group = group,
+            onDismiss = { showRemoveMemberPicker = false },
+            onConfirmRemove = { memberId, memberName ->
+                showRemoveMemberPicker = false
+                onRemoveMember(memberId, memberName)
+            }
+        )
+    }
+}
+
+@Composable
+private fun RemoveMemberDialog(
+    group: Group,
+    onDismiss: () -> Unit,
+    onConfirmRemove: (memberId: String, memberName: String) -> Unit
+) {
+    val viewModel: GroupsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val names = viewModel.uiState.memberNames
+
+    LaunchedEffect(group.id) {
+        viewModel.loadMemberNames(group.memberIds)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Remove a member") },
+        text = {
+            Column {
+                val removableMembers = group.memberIds.filter { it != group.ownerId }
+                if (removableMembers.isEmpty()) {
+                    Text("No other members to remove yet.")
+                }
+                removableMembers.forEach { memberId ->
+                    val displayName = names[memberId] ?: memberId.take(6)
+                    TextButton(
+                        onClick = { onConfirmRemove(memberId, displayName) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(displayName, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun ConfirmActionDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(confirmLabel) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -319,4 +493,3 @@ private fun InviteCodeDialog(group: Group, onDismiss: () -> Unit) {
         }
     )
 }
-

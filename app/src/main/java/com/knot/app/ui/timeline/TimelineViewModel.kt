@@ -98,22 +98,6 @@ class TimelineViewModel(
             uiState = uiState.copy(currentWeekIndex = index)
         }
     }
-
-    /** TEMPORARY -- for testing that writes/reads to Firestore actually work.
-     *  Delete this once there's a real "create memory" screen. */
-    fun createTestMemory(groupId: String) {
-        viewModelScope.launch {
-            val testMemory = Memory(
-                groupId = groupId,
-                authorId = "test-user",
-                authorName = "Test",
-                type = com.knot.app.model.MemoryType.TEXT,
-                textContent = "Test memory created at ${System.currentTimeMillis()}"
-            )
-            repository.createMemory(testMemory)
-            loadTimeline(groupId) // reload so the new memory shows up
-        }
-    }
 }
 
 private fun weekStartMillisFor(epochMillis: Long): Long {
