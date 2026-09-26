@@ -22,7 +22,9 @@ data class GroupsUiState(
     val isSubmittingJoinOrCreate: Boolean = false,
     val joinOrCreateError: String? = null,
     val justCreatedGroup: Group? = null,
-    val memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo> = emptyMap()
+    val memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo> = emptyMap(),
+    val actionError: String? = null,        // errors from leave/delete/remove member
+    val memberNames: Map<String, String> = emptyMap() // id -> display name, for the "remove a member" picker
 )
 
 class GroupsViewModel @JvmOverloads constructor(
@@ -33,6 +35,8 @@ class GroupsViewModel @JvmOverloads constructor(
 
     var uiState by mutableStateOf(GroupsUiState())
         private set
+
+    val currentUserId: String get() = auth.currentUser?.uid ?: ""
 
     init {
         loadGroups()
@@ -119,5 +123,44 @@ class GroupsViewModel @JvmOverloads constructor(
 
     fun dismissJustCreatedBanner() {
         uiState = uiState.copy(justCreatedGroup = null)
+    }
+
+    /** Current user leaves the group -- just removeMember() with their own id. */
+    fun leaveGroup(groupId: String) {
+        viewModelScope.launch {
+            val result = repository.removeMember(groupId, currentUserId)
+            result.onSuccess { loadGroups() }
+                .onFailure { uiState = uiState.copy(actionError = it.message ?: "Couldn't leave the group.") }
+        }
+    }
+
+    /** Owner deletes the whole group. */
+    fun deleteGroup(groupId: String) {
+        viewModelScope.launch {
+            val result = repository.deleteGroup(groupId)
+            result.onSuccess { loadGroups() }
+                .onFailure { uiState = uiState.copy(actionError = it.message ?: "Couldn't delete the group.") }
+        }
+    }
+
+    /** Owner removes a specific member (not themselves). */
+    fun removeMember(groupId: String, memberId: String) {
+        viewModelScope.launch {
+            val result = repository.removeMember(groupId, memberId)
+            result.onSuccess { loadGroups() }
+                .onFailure { uiState = uiState.copy(actionError = it.message ?: "Couldn't remove that member.") }
+        }
+    }
+
+    /** Loads display names for a group's members, for the "remove a member" picker. */
+    fun loadMemberNames(memberIds: List<String>) {
+        viewModelScope.launch {
+            val names = repository.getMemberNames(memberIds)
+            uiState = uiState.copy(memberNames = names)
+        }
+    }
+
+    fun dismissActionError() {
+        uiState = uiState.copy(actionError = null)
     }
 }

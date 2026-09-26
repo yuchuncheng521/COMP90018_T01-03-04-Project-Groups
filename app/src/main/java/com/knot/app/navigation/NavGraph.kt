@@ -26,12 +26,14 @@ import com.knot.app.ui.components.KnotBottomNavBar
 import com.knot.app.ui.groups.GroupDetailScreen
 import com.knot.app.ui.groups.GroupsScreen
 import com.knot.app.ui.groups.GroupsViewModel
+import com.knot.app.ui.groups.MonthDetailScreen
 import com.knot.app.ui.settings.AccountSettingsScreen
 import com.knot.app.ui.settings.AccountSettingsViewModel
 import com.knot.app.ui.settings.AppPreferencesScreen
 import com.knot.app.ui.settings.DeleteAccountScreen
 import com.knot.app.ui.settings.EditProfileScreen
-import com.knot.app.ui.groups.MonthDetailScreen
+import com.knot.app.ui.timeline.TimelineScreen
+import com.knot.app.ui.timeline.TimelineViewModel
 
 
 @Composable
@@ -122,15 +124,22 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 GroupsScreen(
                     viewModel = groupsViewModel,
                     onGroupClick = { group ->
-                        mainNavController.navigate("groupDetail/${group.id}")
+                        mainNavController.navigate(GroupDetailScreenRoute.route(group.id, group.name))
                     }
                 )
             }
+
+            // ---- One group's months (the "album" covers screen) ----
             composable(
-                route = "groupDetail/{groupId}",
-                arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+                route = GroupDetailScreenRoute.ROUTE_PATTERN,
+                arguments = listOf(
+                    navArgument("groupId") { type = NavType.StringType },
+                    navArgument("groupName") { type = NavType.StringType }
+                )
             ) { backStackEntry ->
-                val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+                val groupId = backStackEntry.arguments?.getString("groupId").orEmpty()
+                val groupName = backStackEntry.arguments?.getString("groupName").orEmpty()
+
                 GroupDetailScreen(
                     groupId = groupId,
                     onBackClick = { mainNavController.popBackStack() },
@@ -139,6 +148,25 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                     }
                 )
             }
+
+            // ---- Shared timeline (chronological feed) for one group ----
+            composable(
+                route = TimelineScreenRoute.ROUTE_PATTERN,
+                arguments = listOf(
+                    navArgument("groupId") { type = NavType.StringType },
+                    navArgument("groupName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val timelineViewModel: TimelineViewModel = viewModel()
+
+                TimelineScreen(
+                    groupId = backStackEntry.arguments?.getString("groupId").orEmpty(),
+                    groupName = backStackEntry.arguments?.getString("groupName").orEmpty(),
+                    viewModel = timelineViewModel,
+                    onBackClick = { mainNavController.popBackStack() }
+                )
+            }
+
             composable(MainScreen.Activities.route) {
                 val activitiesViewModel: ActivitiesViewModel = viewModel()
                 ActivitiesScreen(
@@ -151,33 +179,40 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                     }
                 )
             }
+
             composable(
                 route = "activityDetail/{activityId}",
                 arguments = listOf(navArgument("activityId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val activityId = backStackEntry.arguments?.getString("activityId") ?: return@composable
+                val activityId = backStackEntry.arguments?.getString("activityId")
+                    ?: return@composable
+
                 // Reuse the ViewModel from the Activities screen to share state
                 val parentEntry = remember(backStackEntry) {
                     mainNavController.getBackStackEntry(MainScreen.Activities.route)
                 }
                 val activitiesViewModel: ActivitiesViewModel = viewModel(parentEntry)
-                
+
                 ActivityDetailScreen(
                     activityId = activityId,
                     viewModel = activitiesViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
+
             composable(
                 route = "monthDetail/{monthLabel}",
                 arguments = listOf(navArgument("monthLabel") { type = NavType.StringType })
             ) { backStackEntry ->
-                val monthLabel = backStackEntry.arguments?.getString("monthLabel") ?: return@composable
+                val monthLabel = backStackEntry.arguments?.getString("monthLabel")
+                    ?: return@composable
+
                 MonthDetailScreen(
                     monthLabel = monthLabel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
+
             composable("createActivity") {
                 val createActivityViewModel: CreateActivityViewModel = viewModel()
                 CreateActivityScreen(
@@ -185,8 +220,10 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
+
             composable(MainScreen.Settings.route) {
                 val settingsViewModel: AccountSettingsViewModel = viewModel()
+
                 AccountSettingsScreen(
                     viewModel = settingsViewModel,
                     onSignedOut = onSignedOut,
@@ -195,22 +232,28 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                     onDeleteAccountClick = { mainNavController.navigate("deleteAccount") }
                 )
             }
+
             composable("editProfile") {
                 val settingsViewModel: AccountSettingsViewModel = viewModel()
+
                 EditProfileScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
+
             composable("appPreferences") {
                 val settingsViewModel: AccountSettingsViewModel = viewModel()
+
                 AppPreferencesScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
+
             composable("deleteAccount") {
                 val settingsViewModel: AccountSettingsViewModel = viewModel()
+
                 DeleteAccountScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() },

@@ -1,9 +1,10 @@
 package com.knot.app.model
 
 /**
- * Represents one private circle/group that the signed-in user is a member of.
- * The fields here match the data stored in Firestore's "groups" collection.
+ * A private circle/group the current user belongs to.
+ * Mirrors a document in the future "groups" Firestore collection.
  */
+
 data class Group(
     val id: String = "",
     val name: String = "",
@@ -12,6 +13,7 @@ data class Group(
     val memberAvatars: List<String> = emptyList(), // initials or image URLs, placeholder for now
     val lastActivitySummary: String = "",
     val unreadCount: Int = 0,
+    val createdAt: Long = 0L, // epoch millis -- when the group was created; drives the month list on GroupDetailScreen
     val ownerId: String = "",
     val inviteCode: String = ""
 )
