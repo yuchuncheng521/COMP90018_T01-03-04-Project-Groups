@@ -165,10 +165,10 @@ fun ActivityDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = KnotCream,
-                        focusedContainerColor = KnotCream,
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = KnotDarkBrown
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     ),
                     minLines = 1,
                     maxLines = 5
@@ -237,7 +237,7 @@ fun ActivityDetailScreen(
                 }
 
                 if (currentLocationText != null) {
-                    Text("Location attached: $currentLocationText", style = MaterialTheme.typography.bodyMedium, color = KnotDarkBrown)
+                    Text("Location attached: $currentLocationText", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -251,9 +251,9 @@ fun ActivityDetailScreen(
                         onClick = onBackClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, KnotInk)
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
                     ) {
-                        Text("CANCEL", color = KnotInk)
+                        Text("CANCEL", color = MaterialTheme.colorScheme.onSurface)
                     }
                     Button(
                         onClick = {
@@ -269,9 +269,12 @@ fun ActivityDetailScreen(
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
-                        Text("DONE", color = Color.White)
+                        Text("DONE")
                     }
                 }
             }
@@ -311,7 +314,7 @@ fun ActivityDetailScreen(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = KnotDarkBrown)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -323,12 +326,12 @@ private fun ResponseButton(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(text = text, color = Color.DarkGray)
+        Text(text = text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary)
     }
 }
 

@@ -97,8 +97,8 @@ fun ActivitiesScreen(
                         onClick = { /* Already on Quests/Activities */ },
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = KnotDarkBrown,
-                            contentColor = KnotCream
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(24.dp)
                     ) {
@@ -108,10 +108,10 @@ fun ActivitiesScreen(
                         onClick = onCreateClick,
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                            contentColor = KnotDarkBrown
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(24.dp),
-                        border = androidx.compose.foundation.BorderStroke(2.dp, KnotDarkBrown)
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                     ) {
                         Text("CREATE", fontWeight = FontWeight.Bold)
                     }

@@ -16,8 +16,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.R
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotInk
 import com.knot.app.ui.theme.KnotRed
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,8 +100,9 @@ fun DeleteAccountScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = KnotCream,
-                        unfocusedContainerColor = KnotCream
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     )
                 )
 
@@ -116,8 +115,9 @@ fun DeleteAccountScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = KnotCream,
-                        unfocusedContainerColor = KnotCream
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     )
                 )
 
@@ -127,7 +127,10 @@ fun DeleteAccountScreen(
                     onClick = { viewModel.deleteAccount(email, password, onDeleted) },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = KnotRed)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = KnotRed,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("Delete My Account Permanently", fontWeight = FontWeight.Bold)
                 }
@@ -136,9 +139,9 @@ fun DeleteAccountScreen(
                     onClick = onBackClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(28.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, KnotInk)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
                 ) {
-                    Text("Cancel", color = KnotInk)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
 

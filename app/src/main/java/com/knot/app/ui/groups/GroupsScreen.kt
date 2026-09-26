@@ -38,8 +38,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.model.Group
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotTheme
 
 @Preview(showBackground = true)
@@ -95,15 +93,15 @@ fun GroupsScreen(
 ) {
     val uiState = viewModel.uiState
     Scaffold(
-        containerColor = KnotCream,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = { TopAppBar(title = {
                 Text("Groups",
                 fontSize = 38.sp
 
                 ) },
                     colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = KnotCream,
-                    scrolledContainerColor = KnotCream
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
             )
                  },
@@ -112,8 +110,8 @@ fun GroupsScreen(
             Button(
                 onClick = onCreateGroupClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = KnotDarkBrown,
-                    contentColor = KnotCream
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
                 modifier = Modifier

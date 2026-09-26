@@ -15,9 +15,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knot.app.R
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotInk
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +70,7 @@ fun CreateActivityScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .background(KnotDarkBrown.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
                         .clickable { expanded = true }
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart
@@ -83,8 +80,8 @@ fun CreateActivityScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(text = selectedGroup, color = Color.White)
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.White)
+                        Text(text = selectedGroup, color = MaterialTheme.colorScheme.onPrimary)
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
                 DropdownMenu(
@@ -112,8 +109,9 @@ fun CreateActivityScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = KnotCream,
-                    focusedContainerColor = KnotCream
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary
                 )
             )
 
@@ -124,8 +122,9 @@ fun CreateActivityScreen(
                 modifier = Modifier.fillMaxWidth().height(120.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = KnotCream,
-                    focusedContainerColor = KnotCream
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary
                 )
             )
 
@@ -140,17 +139,20 @@ fun CreateActivityScreen(
                     onClick = onBackClick,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, KnotInk)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
                 ) {
-                    Text("CANCEL", color = KnotInk)
+                    Text("CANCEL", color = MaterialTheme.colorScheme.onSurface)
                 }
                 Button(
                     onClick = { /* Stub */ onBackClick() },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Text("CREATE", color = Color.White)
+                    Text("CREATE")
                 }
             }
         }
