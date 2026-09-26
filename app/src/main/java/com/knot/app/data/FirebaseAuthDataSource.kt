@@ -1,10 +1,11 @@
 package com.knot.app.data
 
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
-import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -15,20 +16,30 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.tasks.await
 
-/** Talks to the real Firebase Auth SDK. Kept behind an interface so it can be faked in tests. */
+/** Talks to Firebase Auth. Kept behind an interface so it can be faked in tests. */
 interface FirebaseAuthDataSource {
     val currentUser: UserAccount?
     val isLoggedIn: Boolean
+
     fun authStateFlow(): Flow<UserAccount?>
+
     suspend fun signIn(email: String, password: String): UserAccount
     suspend fun signUp(displayName: String, email: String, password: String): UserAccount
     fun signOut()
     suspend fun sendPasswordResetEmail(email: String)
+
+    suspend fun updateDisplayName(name: String)
+    suspend fun updateEmail(newEmail: String)
+    suspend fun updatePassword(newPassword: String)
+    suspend fun reauthenticate(email: String, password: String)
+    suspend fun deleteAccount()
 }
 
-/** Writes the Firestore "users/{uid}" profile document. Kept behind an interface for testing. */
+/** Reads/writes the Firestore users/{uid} profile document. */
 interface UserProfileDataSource {
     suspend fun createProfile(user: UserAccount)
+    suspend fun updateDisplayName(uid: String, name: String)
+    suspend fun deleteProfile(uid: String)
 }
 
 class FirebaseAuthDataSourceImpl(
@@ -49,20 +60,40 @@ class FirebaseAuthDataSourceImpl(
         awaitClose { auth.removeAuthStateListener(listener) }
     }.distinctUntilChanged()
 
-    override suspend fun signIn(email: String, password: String): UserAccount = wrapAuthErrors {
-        val result = auth.signInWithEmailAndPassword(email, password).await()
-        val user = result.user ?: throw AuthException(AuthErrorCode.UNKNOWN, "Login failed. Please try again.")
-        user.toUserAccount()
-    }
+    override suspend fun signIn(email: String, password: String): UserAccount =
+        wrapAuthErrors {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val user = result.user
+                ?: throw AuthException(
+                    AuthErrorCode.UNKNOWN,
+                    "Login failed. Please try again."
+                )
+            user.toUserAccount()
+        }
 
-    override suspend fun signUp(displayName: String, email: String, password: String): UserAccount = wrapAuthErrors {
+    override suspend fun signUp(
+        displayName: String,
+        email: String,
+        password: String
+    ): UserAccount = wrapAuthErrors {
         val result = auth.createUserWithEmailAndPassword(email, password).await()
-        val user = result.user ?: throw AuthException(AuthErrorCode.UNKNOWN, "Sign up failed. Please try again.")
+        val user = result.user
+            ?: throw AuthException(
+                AuthErrorCode.UNKNOWN,
+                "Sign up failed. Please try again."
+            )
+
         val profileUpdates = UserProfileChangeRequest.Builder()
             .setDisplayName(displayName)
             .build()
+
         runCatching { user.updateProfile(profileUpdates).await() }
-        UserAccount(uid = user.uid, displayName = displayName, email = user.email ?: email)
+
+        UserAccount(
+            uid = user.uid,
+            displayName = displayName,
+            email = user.email ?: email
+        )
     }
 
     override fun signOut() {
@@ -70,8 +101,52 @@ class FirebaseAuthDataSourceImpl(
     }
 
     override suspend fun sendPasswordResetEmail(email: String) {
-        wrapAuthErrors { auth.sendPasswordResetEmail(email).await() }
+        wrapAuthErrors {
+            auth.sendPasswordResetEmail(email).await()
+        }
     }
+
+    override suspend fun updateDisplayName(name: String) {
+        wrapAuthErrors {
+            val user = requireCurrentFirebaseUser()
+            val updates = UserProfileChangeRequest.Builder()
+                .setDisplayName(name)
+                .build()
+            user.updateProfile(updates).await()
+        }
+    }
+
+    override suspend fun updateEmail(newEmail: String) {
+        wrapAuthErrors {
+            val user = requireCurrentFirebaseUser()
+            // Firebase sends a verification email first; the Auth email changes
+            // only after the user confirms the new address.
+            user.verifyBeforeUpdateEmail(newEmail).await()
+        }
+    }
+
+    override suspend fun updatePassword(newPassword: String) {
+        wrapAuthErrors {
+            requireCurrentFirebaseUser().updatePassword(newPassword).await()
+        }
+    }
+
+    override suspend fun reauthenticate(email: String, password: String) {
+        wrapAuthErrors {
+            val user = requireCurrentFirebaseUser()
+            val credential = EmailAuthProvider.getCredential(email, password)
+            user.reauthenticate(credential).await()
+        }
+    }
+
+    override suspend fun deleteAccount() {
+        wrapAuthErrors {
+            requireCurrentFirebaseUser().delete().await()
+        }
+    }
+
+    private fun requireCurrentFirebaseUser(): FirebaseUser =
+        auth.currentUser ?: error("Not logged in")
 
     private fun FirebaseUser.toUserAccount(): UserAccount = UserAccount(
         uid = uid,
@@ -86,7 +161,11 @@ class FirebaseAuthDataSourceImpl(
         } catch (e: FirebaseAuthException) {
             throw AuthErrorMapper.map(e.errorCode, e.message, e)
         } catch (e: FirebaseNetworkException) {
-            throw AuthErrorMapper.map("ERROR_NETWORK_REQUEST_FAILED", e.message, e)
+            throw AuthErrorMapper.map(
+                "ERROR_NETWORK_REQUEST_FAILED",
+                e.message,
+                e
+            )
         }
     }
 }
@@ -94,6 +173,7 @@ class FirebaseAuthDataSourceImpl(
 class FirestoreUserProfileDataSource(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) : UserProfileDataSource {
+
     override suspend fun createProfile(user: UserAccount) {
         val data = mapOf(
             "uid" to user.uid,
@@ -102,8 +182,24 @@ class FirestoreUserProfileDataSource(
             "photoUrl" to user.photoUrl,
             "createdAt" to FieldValue.serverTimestamp()
         )
-        firestore.collection("users").document(user.uid)
+
+        firestore.collection("users")
+            .document(user.uid)
             .set(data, SetOptions.merge())
+            .await()
+    }
+
+    override suspend fun updateDisplayName(uid: String, name: String) {
+        firestore.collection("users")
+            .document(uid)
+            .update("displayName", name)
+            .await()
+    }
+
+    override suspend fun deleteProfile(uid: String) {
+        firestore.collection("users")
+            .document(uid)
+            .delete()
             .await()
     }
 }
