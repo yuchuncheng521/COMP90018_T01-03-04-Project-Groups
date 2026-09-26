@@ -215,11 +215,11 @@ fun AccountSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = { viewModel.signOut(onSignedOut) },
+                    onClick = { viewModel.setShowLogoutDialog(true) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = KnotDarkBrown,
-                        contentColor = KnotCream
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(24.dp)
                 ) {
@@ -250,12 +250,35 @@ fun AccountSettingsScreen(
             text = { Text("This will delete temporary files stored on your device. Your account data in the cloud will not be affected.") },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearLocalCache(context) }) {
-                    Text("Clear", color = KnotDarkBrown)
+                    Text("Clear", color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.setShowClearCacheDialog(false) }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (uiState.showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowLogoutDialog(false) },
+            title = { Text("Log Out") },
+            text = { Text("Are you sure you want to log out of your account?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.setShowLogoutDialog(false)
+                        viewModel.signOut(onSignedOut)
+                    }
+                ) {
+                    Text("Log Out", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowLogoutDialog(false) }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
             }
         )
@@ -351,8 +374,8 @@ private fun SettingsProgressRow(
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(8.dp),
-                color = KnotDarkBrown,
-                trackColor = KnotDarkBrown.copy(alpha = 0.1f),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
             Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
