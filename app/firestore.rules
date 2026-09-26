@@ -27,8 +27,8 @@ service cloud.firestore {
           && request.resource.data.inviteCode == resource.data.inviteCode
         )
       );
-
-      allow delete: if false;
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.ownerId;
     }
   }
 }

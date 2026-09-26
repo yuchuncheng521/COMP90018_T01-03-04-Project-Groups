@@ -2,6 +2,7 @@ package com.knot.app.ui.groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -40,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,6 +88,7 @@ fun GroupsScreen(
     var pendingLeaveGroup by remember { mutableStateOf<Group?>(null) }
     var pendingDeleteGroup by remember { mutableStateOf<Group?>(null) }
     var pendingRemoveMember by remember { mutableStateOf<Triple<Group, String, String>?>(null) }
+    var pendingInviteCodeGroup by remember { mutableStateOf<Group?>(null) }
 
     Scaffold(
         containerColor = KnotCream,
@@ -123,7 +128,8 @@ fun GroupsScreen(
                 onDeleteGroup = { group -> pendingDeleteGroup = group },
                 onRemoveMember = { group, memberId, memberName ->
                     pendingRemoveMember = Triple(group, memberId, memberName)
-                }
+                },
+                onShowInviteCode = { group -> pendingInviteCodeGroup = group }
             )
         }
     }
@@ -184,6 +190,13 @@ fun GroupsScreen(
             onDismiss = { pendingRemoveMember = null }
         )
     }
+
+    pendingInviteCodeGroup?.let { group ->
+        InviteCodeDialog(
+            group = group,
+            onDismiss = { pendingInviteCodeGroup = null }
+        )
+    }
 }
 
 @Composable
@@ -230,7 +243,8 @@ private fun GroupsList(
     onGroupClick: (Group) -> Unit,
     onLeaveGroup: (Group) -> Unit,
     onDeleteGroup: (Group) -> Unit,
-    onRemoveMember: (Group, String, String) -> Unit
+    onRemoveMember: (Group, String, String) -> Unit,
+    onShowInviteCode: (Group) -> Unit
 ) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
@@ -244,7 +258,8 @@ private fun GroupsList(
                 onClick = { onGroupClick(group) },
                 onLeaveGroup = { onLeaveGroup(group) },
                 onDeleteGroup = { onDeleteGroup(group) },
-                onRemoveMember = { memberId, memberName -> onRemoveMember(group, memberId, memberName) }
+                onRemoveMember = { memberId, memberName -> onRemoveMember(group, memberId, memberName) },
+                onShowInviteCode = { onShowInviteCode(group) }
             )
         }
     }
@@ -257,7 +272,8 @@ private fun GroupCard(
     onClick: () -> Unit,
     onLeaveGroup: () -> Unit,
     onDeleteGroup: () -> Unit,
-    onRemoveMember: (memberId: String, memberName: String) -> Unit
+    onRemoveMember: (memberId: String, memberName: String) -> Unit,
+    onShowInviteCode: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showRemoveMemberPicker by remember { mutableStateOf(false) }
@@ -307,6 +323,10 @@ private fun GroupCard(
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
             if (isOwner) {
                 DropdownMenuItem(
+                    text = { Text("Invite code") },
+                    onClick = { showMenu = false; onShowInviteCode()}
+                )
+                DropdownMenuItem(
                     text = { Text("Remove a member") },
                     onClick = { showMenu = false; showRemoveMemberPicker = true }
                 )
@@ -354,23 +374,46 @@ private fun RemoveMemberDialog(
         text = {
             Column {
                 val removableMembers = group.memberIds.filter { it != group.ownerId }
+
                 if (removableMembers.isEmpty()) {
                     Text("No other members to remove yet.")
-                }
-                removableMembers.forEach { memberId ->
-                    val displayName = names[memberId] ?: memberId.take(6)
-                    TextButton(
-                        onClick = { onConfirmRemove(memberId, displayName) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(displayName, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
+                } else {
+                    removableMembers.forEach { memberId ->
+                        val displayName = names[memberId] ?: "Member"
+
+                        TextButton(
+                            onClick = {
+                                onConfirmRemove(memberId, displayName)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Text(
+                                    text = displayName,
+                                    modifier = Modifier.padding(start = 12.dp),
+                                    textAlign = TextAlign.Start
+                                )
+                            }
+                        }
                     }
                 }
             }
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
         }
     )
 }
@@ -474,22 +517,115 @@ private fun JoinOrCreateDialog(
 }
 
 @Composable
-private fun InviteCodeDialog(group: Group, onDismiss: () -> Unit) {
+private fun InviteCodeDialog(
+    group: Group,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var copied by remember { mutableStateOf(false) }
+
+    val shareText = """
+        Join my Knot group "${group.name}"!
+        
+        Use this invite code to join:
+        ${group.inviteCode}
+    """.trimIndent()
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("\"${group.name}\" created!") },
+        title = {
+            Text("\"${group.name}\" invite code")
+        },
         text = {
             Column {
-                Text("Share this invite code with the people you want in this circle:")
                 Text(
-                    text = group.inviteCode,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(top = 12.dp)
+                    "Share this invite code with the people you want in this circle:"
                 )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = group.inviteCode,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+
+                    IconButton(
+                        onClick = {
+                            val clipboard =
+                                context.getSystemService(
+                                    android.content.ClipboardManager::class.java
+                                )
+
+                            clipboard?.setPrimaryClip(
+                                android.content.ClipData.newPlainText(
+                                    "Invite code",
+                                    group.inviteCode
+                                )
+                            )
+
+                            copied = true
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ContentCopy,
+                            contentDescription = "Copy invite code"
+                        )
+                    }
+                }
+
+                if (copied) {
+                    Text(
+                        text = "Copied!",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                TextButton(
+                    onClick = {
+                        val shareIntent = android.content.Intent(
+                            android.content.Intent.ACTION_SEND
+                        ).apply {
+                            type = "text/plain"
+                            putExtra(
+                                android.content.Intent.EXTRA_TEXT,
+                                shareText
+                            )
+                        }
+
+                        context.startActivity(
+                            android.content.Intent.createChooser(
+                                shareIntent,
+                                "Share invite"
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = null
+                    )
+
+                    Text(
+                        text = "Share invite",
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
         }
     )
 }
