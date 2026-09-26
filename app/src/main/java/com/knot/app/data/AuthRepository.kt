@@ -69,4 +69,14 @@ class AuthRepository(
         profileDataSource.deleteProfile(user.uid)
         authDataSource.deleteAccount()
     }
+
+    suspend fun updateAvatarColor(colorHex: String): Result<Unit> = runCatching {
+        val user = currentUser ?: error("Not logged in")
+        profileDataSource.updateAvatarColor(user.uid, colorHex)
+    }
+
+    suspend fun getAvatarColor(): String? {
+        val uid = currentUser?.uid ?: return null
+        return profileDataSource.getAvatarColor(uid)
+    }
 }

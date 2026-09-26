@@ -1,6 +1,7 @@
 package com.knot.app.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,13 @@ import com.knot.app.R
 import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotInk
 import com.knot.app.ui.theme.KnotDarkBrown
+import androidx.compose.foundation.shape.CircleShape
+import com.knot.app.ui.theme.KnotClay
+import com.knot.app.ui.theme.KnotClayDark
+import com.knot.app.ui.theme.KnotSage
+import com.knot.app.ui.theme.KnotBlue
+import com.knot.app.ui.theme.KnotGreen
+import com.knot.app.ui.theme.KnotRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +39,10 @@ fun EditProfileScreen(
     var displayName by remember { mutableStateOf(uiState.account.displayName) }
     var email by remember { mutableStateOf(uiState.account.email) }
     var password by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshAvatarColor()
+    }
 
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let {
@@ -68,6 +80,54 @@ fun EditProfileScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+                Text(
+                    text = "Avatar Color",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(
+                            Color(android.graphics.Color.parseColor(uiState.avatarColorHex)),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = displayName.take(1).uppercase().ifEmpty { "?" },
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val colorOptions = listOf(
+                        "#C97C5D" to KnotClay,
+                        "#A85F45" to KnotClayDark,
+                        "#7C9885" to KnotSage,
+                        "#9CB5C0" to KnotBlue,
+                        "#428A68" to KnotGreen,
+                        "#8C2E30" to KnotRed
+                    )
+                    colorOptions.forEach { (hex, color) ->
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(color, CircleShape)
+                                .clickable { viewModel.updateAvatarColor(hex) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text(
                     text = "Personal Information",
                     style = MaterialTheme.typography.titleMedium,

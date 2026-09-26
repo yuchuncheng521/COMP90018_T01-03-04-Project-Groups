@@ -18,7 +18,7 @@ import com.knot.app.nearby.NearbyManager
  * Falls back to [sampleActivities] / [samplePlaceholderAlert] when there's no backend yet.
  */
 class ActivitiesRepository(
-    private val nearbyManager: NearbyManager
+    private val nearbyManager: NearbyManager? = null
 ) {
 
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
@@ -54,7 +54,7 @@ class ActivitiesRepository(
      */
     suspend fun getP2pAlert(): ActivityItem? {
         val connectedMember =
-            nearbyManager.connectedMembers.value.firstOrNull()
+            nearbyManager?.connectedMembers?.value?.firstOrNull()
                 ?: return null
 
         return ActivityItem(
@@ -71,6 +71,44 @@ class ActivitiesRepository(
 
     suspend fun updateActivityStatus(activityId: String, status: ActivityStatus): Result<Unit> = runCatching {
         firestore.collection("activities").document(activityId).update("status", status.name).await()
+    }
+
+    /**
+     * Creates a new activity/prompt and assigns it to every member of the group.
+     *
+     * [getActivities] filters "activities" by a single-valued "assignedTo" field
+     * (whereEqualTo, not an array-contains), so a single shared document can't be
+     * "assigned to everyone" -- instead this fans out into one document per member,
+     * each with its own assignedTo/status, so each person's completion state stays
+     * independent (matches how [updateActivityStatus] already works, one doc = one status).
+     */
+    suspend fun createActivity(
+        groupId: String,
+        groupName: String,
+        title: String,
+        description: String,
+        memberIds: List<String>
+    ): Result<Unit> = runCatching {
+        if (memberIds.isEmpty()) error("This group has no members to assign the activity to.")
+
+        val batch = firestore.batch()
+        memberIds.forEach { memberId ->
+            val docRef = firestore.collection("activities").document()
+            batch.set(
+                docRef,
+                mapOf(
+                    "groupId" to groupId,
+                    "groupName" to groupName,
+                    "title" to title,
+                    "description" to description,
+                    "type" to ActivityType.WEEKLY_PROMPT.name,
+                    "status" to ActivityStatus.PENDING.name,
+                    "dueLabel" to "New",
+                    "assignedTo" to memberId
+                )
+            )
+        }
+        batch.commit().await()
     }
 
     suspend fun saveActivityResponse(

@@ -5,5 +5,6 @@ data class UserAccount(
     val uid: String = "",
     val displayName: String = "",
     val email: String = "",
-    val photoUrl: String? = null
+    val photoUrl: String? = null,
+    val avatarColor: String = "#C97C5D"
 )

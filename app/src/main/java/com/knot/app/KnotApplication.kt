@@ -2,8 +2,16 @@ package com.knot.app
 
 import android.app.Application
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.knot.app.crypto.DeviceKeyManager
 import com.knot.app.nearby.NearbyManager
 import com.knot.app.notifications.FcmTokenManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /**
  * Application entry point. Initializes Firebase once for the whole app.
@@ -35,5 +43,18 @@ class KnotApplication : Application() {
         nearbyManager = NearbyManager(applicationContext)
 
         FcmTokenManager.syncCurrentToken()
+
+        DeviceKeyManager.init(this)
+        FirebaseAuth.getInstance().addAuthStateListener { auth ->
+            val uid = auth.currentUser?.uid ?: return@addAuthStateListener
+            CoroutineScope(Dispatchers.IO).launch {
+                runCatching {
+                    val publicKey = DeviceKeyManager.publicKeysetBase64(this@KnotApplication)
+                    FirebaseFirestore.getInstance().collection("users").document(uid)
+                        .set(mapOf("publicKey" to publicKey), SetOptions.merge())
+                        .await()
+                }
+            }
+        }
     }
 }
