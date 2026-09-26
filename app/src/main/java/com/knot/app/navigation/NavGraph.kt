@@ -32,7 +32,7 @@ import com.knot.app.ui.settings.EditProfileScreen
 import com.knot.app.ui.groups.MonthDetailScreen
 
 @Composable
-fun KnotNavHost() {
+fun KnotNavHost(settingsViewModel: AccountSettingsViewModel = viewModel()) {
     val navController = rememberNavController()
 
     val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
@@ -53,6 +53,7 @@ fun KnotNavHost() {
         // ---- Main app flow: Groups / Activities / Account, with bottom nav ----
         composable(RootGraph.MAIN) {
             MainNavHost(
+                settingsViewModel = settingsViewModel,
                 onSignedOut = {
                     navController.navigate(RootGraph.AUTH) {
                         popUpTo(RootGraph.MAIN) { inclusive = true }
@@ -93,7 +94,10 @@ private fun AuthNavHost(onAuthenticated: () -> Unit) {
 }
 
 @Composable
-private fun MainNavHost(onSignedOut: () -> Unit) {
+private fun MainNavHost(
+    settingsViewModel: AccountSettingsViewModel,
+    onSignedOut: () -> Unit
+) {
     val mainNavController: NavHostController = rememberNavController()
 
     Scaffold(
@@ -171,7 +175,6 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 )
             }
             composable(MainScreen.Settings.route) {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
                 AccountSettingsScreen(
                     viewModel = settingsViewModel,
                     onSignedOut = onSignedOut,
@@ -181,21 +184,18 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                 )
             }
             composable("editProfile") {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
                 EditProfileScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
             composable("appPreferences") {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
                 AppPreferencesScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
             composable("deleteAccount") {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
                 DeleteAccountScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() },

@@ -20,12 +20,13 @@ data class AccountSettingsUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null,
-    val appTheme: String = "System", // Light, Dark, System
+    val appTheme: String = "Default", // Default, Monochrome, Invert
     val textSizeMultiplier: Float = 1.0f,
     val syncStatus: String = "Up to date",
     val storageUsage: Float = 0.45f,
     val syncOverWifi: Boolean = true,
     val showClearCacheDialog: Boolean = false,
+    val showLogoutDialog: Boolean = false,
     val isCameraAllowed: Boolean = false,
     val isMicrophoneAllowed: Boolean = false,
     val isLocationAllowed: Boolean = false,
@@ -38,7 +39,9 @@ class AccountSettingsViewModel @JvmOverloads constructor(
 
     var uiState by mutableStateOf(
         AccountSettingsUiState(
-            account = repository.currentUser ?: UserAccount(displayName = "Guest", email = "Not signed in")
+            account = repository.currentUser ?: UserAccount(displayName = "Guest", email = "Not signed in"),
+            textSizeMultiplier = initialTextSizeMultiplier,
+            appTheme = initialAppTheme
         )
     )
         private set
@@ -127,12 +130,39 @@ class AccountSettingsViewModel @JvmOverloads constructor(
         }
     }
 
-    fun setAppTheme(theme: String) {
+    fun setAppTheme(theme: String, context: Context? = null) {
+        initialAppTheme = theme
         uiState = uiState.copy(appTheme = theme)
+        context?.getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
+            ?.edit()
+            ?.putString("app_theme", theme)
+            ?.apply()
     }
 
-    fun setTextSize(multiplier: Float) {
+    fun setTextSize(multiplier: Float, context: Context? = null) {
+        initialTextSizeMultiplier = multiplier
         uiState = uiState.copy(textSizeMultiplier = multiplier)
+        context?.getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
+            ?.edit()
+            ?.putFloat("text_size_multiplier", multiplier)
+            ?.apply()
+    }
+
+    fun loadPreferences(context: Context) {
+        val prefs = context.getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
+        val savedMultiplier = prefs.getFloat("text_size_multiplier", 1.0f)
+        val savedTheme = prefs.getString("app_theme", "Default") ?: "Default"
+        initialTextSizeMultiplier = savedMultiplier
+        initialAppTheme = savedTheme
+        uiState = uiState.copy(
+            textSizeMultiplier = savedMultiplier,
+            appTheme = savedTheme
+        )
+    }
+
+    companion object {
+        private var initialTextSizeMultiplier: Float = 1.0f
+        private var initialAppTheme: String = "Default"
     }
 
     fun setSyncOverWifi(enabled: Boolean) {
@@ -141,6 +171,10 @@ class AccountSettingsViewModel @JvmOverloads constructor(
 
     fun setShowClearCacheDialog(show: Boolean) {
         uiState = uiState.copy(showClearCacheDialog = show)
+    }
+
+    fun setShowLogoutDialog(show: Boolean) {
+        uiState = uiState.copy(showLogoutDialog = show)
     }
 
     fun checkPermissions(context: Context) {
