@@ -32,7 +32,9 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if false;
+      // Group owner can delete the group.
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.ownerId;
 
       match /memberKeys/{uid} {
         // Each member's copy of the group's symmetric key, wrapped with their
