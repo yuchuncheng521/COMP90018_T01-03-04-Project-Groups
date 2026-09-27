@@ -11,6 +11,8 @@ import kotlin.random.Random
 /**
  * Fetches the groups the signed-in user belongs to, and lets them create a new group or join an existing one using an invite code.
  */
+data class MemberAvatarInfo(val displayName: String = "", val avatarColor: String = "#C97C5D")
+
 class GroupsRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
@@ -52,7 +54,26 @@ class GroupsRepository(
         docRef.set(data).await()
         addGroupToUserProfile(uid, docRef.id)
 
-        Group(id = docRef.id, name = name.trim(), memberCount = 1, ownerId = uid, inviteCode = inviteCode)
+        Group(id = docRef.id, name = name.trim(), memberCount = 1, memberIds = listOf(uid), ownerId = uid, inviteCode = inviteCode)
+    }
+
+    /** Display name + avatar color for a list of member ids, used to render real colored avatars in the Groups list. */
+    suspend fun getMemberAvatarInfo(memberIds: List<String>): Map<String, MemberAvatarInfo> {
+        if (memberIds.isEmpty()) return emptyMap()
+        return runCatching {
+            // Firestore's whereIn supports at most 10 values -- fine for small groups,
+            // would need batching in chunks of 10 for larger ones.
+            val snapshot = firestore.collection("users")
+                .whereIn(com.google.firebase.firestore.FieldPath.documentId(), memberIds.take(10))
+                .get()
+                .await()
+            snapshot.documents.associate {
+                it.id to MemberAvatarInfo(
+                    displayName = it.getString("displayName") ?: "",
+                    avatarColor = it.getString("avatarColor") ?: "#C97C5D"
+                )
+            }
+        }.getOrElse { emptyMap() }
     }
 
     /** Joins an existing group by its invite code. Fails if the code doesn't match any group. */

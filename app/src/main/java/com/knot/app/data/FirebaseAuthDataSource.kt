@@ -40,6 +40,10 @@ interface UserProfileDataSource {
     suspend fun createProfile(user: UserAccount)
     suspend fun updateDisplayName(uid: String, name: String)
     suspend fun deleteProfile(uid: String)
+    suspend fun updateAvatarColor(uid: String, colorHex: String)
+    suspend fun getAvatarColor(uid: String): String?
+    suspend fun uploadPublicKey(uid: String, publicKeyBase64: String)
+    suspend fun getPublicKey(uid: String): String?
 }
 
 class FirebaseAuthDataSourceImpl(
@@ -180,6 +184,7 @@ class FirestoreUserProfileDataSource(
             "displayName" to user.displayName,
             "email" to user.email,
             "photoUrl" to user.photoUrl,
+            "avatarColor" to user.avatarColor,
             "createdAt" to FieldValue.serverTimestamp()
         )
 
@@ -201,5 +206,29 @@ class FirestoreUserProfileDataSource(
             .document(uid)
             .delete()
             .await()
+    }
+
+    override suspend fun updateAvatarColor(uid: String, colorHex: String) {
+        firestore.collection("users")
+            .document(uid)
+            .update("avatarColor", colorHex)
+            .await()
+    }
+
+    override suspend fun getAvatarColor(uid: String): String? {
+        val doc = firestore.collection("users").document(uid).get().await()
+        return doc.getString("avatarColor")
+    }
+
+    override suspend fun uploadPublicKey(uid: String, publicKeyBase64: String) {
+        firestore.collection("users")
+            .document(uid)
+            .set(mapOf("publicKey" to publicKeyBase64), SetOptions.merge())
+            .await()
+    }
+
+    override suspend fun getPublicKey(uid: String): String? {
+        val doc = firestore.collection("users").document(uid).get().await()
+        return doc.getString("publicKey")
     }
 }

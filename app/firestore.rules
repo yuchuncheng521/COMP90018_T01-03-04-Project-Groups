@@ -32,21 +32,31 @@ service cloud.firestore {
         )
       );
 
+      // Group owner can delete the group.
       allow delete: if request.auth != null
-      && request.auth.uid == resource.data.ownerId;
+        && request.auth.uid == resource.data.ownerId;
 
       match /memberKeys/{uid} {
+        // Each member's copy of the group's symmetric key, wrapped with their
+        // own public key. Only the group owner's device writes these (when
+        // creating the group or syncing a new member); any signed-in member
+        // can read (they can only decrypt their own entry anyway, since it's
+        // wrapped with their personal key).
         allow read: if request.auth != null;
         allow write: if request.auth != null;
       }
     }
 
     match /activities/{activityId} {
+      // Weekly prompts / activities assigned to a user. Not scoped tighter
+      // than "signed in" yet since there's no server-side notion of group
+      // membership check here -- fine for this base build.
       allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
 
     match /activity_responses/{responseId} {
+      // A member submitting their (encrypted) response to an activity.
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;

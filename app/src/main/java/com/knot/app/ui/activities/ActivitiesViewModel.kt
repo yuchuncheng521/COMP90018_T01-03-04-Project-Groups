@@ -12,6 +12,8 @@ import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
 import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
+import com.knot.app.crypto.GroupKeyManager
 
 data class ActivitiesUiState(
     val isLoading: Boolean = true,
@@ -102,8 +104,17 @@ class ActivitiesViewModel(
 
         uiState = uiState.copy(isLoading = true)
         viewModelScope.launch {
+            val activity = uiState.activities.find { it.id == activityId }
+            val myUid = FirebaseAuth.getInstance().currentUser?.uid
+
+            val textToSave = if (activity != null && myUid != null && text.isNotBlank()) {
+                GroupKeyManager.encryptText(getApplication(), activity.groupId, myUid, text) ?: text
+            } else {
+                text
+            }
+
             val result = repository.saveActivityResponse(
-                activityId, text, photoPath, videoPath, audioPath, location
+                activityId, textToSave, photoPath, videoPath, audioPath, location
             )
             uiState = uiState.copy(isLoading = false)
             result.onSuccess {

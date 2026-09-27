@@ -96,6 +96,10 @@ fun AccountSettingsScreen(
         viewModel.checkPermissions(context)
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshAvatarColor()
+    }
+
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -226,6 +230,7 @@ fun AccountSettingsScreen(
                 ProfileHeader(
                     displayName = uiState.account.displayName,
                     email = uiState.account.email,
+                    avatarColorHex = uiState.avatarColorHex,
                     onClick = onProfileClick,
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
@@ -628,7 +633,7 @@ private fun SettingsClickRow(
 }
 
 @Composable
-private fun ProfileHeader(displayName: String, email: String, onClick: () -> Unit) {
+private fun ProfileHeader(displayName: String, email: String, avatarColorHex: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -639,13 +644,13 @@ private fun ProfileHeader(displayName: String, email: String, onClick: () -> Uni
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                .background(Color(android.graphics.Color.parseColor(avatarColorHex)), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = Color.White
             )
         }
         Column(modifier = Modifier.padding(start = 16.dp).weight(1f)) {

@@ -17,6 +17,7 @@ import com.knot.app.ui.activities.ActivitiesScreen
 import com.knot.app.ui.activities.ActivitiesViewModel
 import com.knot.app.ui.activities.ActivityDetailScreen
 import com.knot.app.ui.activities.CreateActivityScreen
+import com.knot.app.ui.activities.CreateActivityViewModel
 import com.knot.app.ui.auth.AuthViewModel
 import com.knot.app.ui.auth.ForgotPasswordScreen
 import com.knot.app.ui.auth.LoginScreen
@@ -213,7 +214,9 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             }
 
             composable("createActivity") {
+                val createActivityViewModel: CreateActivityViewModel = viewModel()
                 CreateActivityScreen(
+                    viewModel = createActivityViewModel,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }

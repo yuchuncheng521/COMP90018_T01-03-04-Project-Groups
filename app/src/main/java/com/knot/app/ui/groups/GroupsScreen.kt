@@ -16,6 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ContentCopy
@@ -90,6 +93,10 @@ fun GroupsScreen(
     var pendingRemoveMember by remember { mutableStateOf<Triple<Group, String, String>?>(null) }
     var pendingInviteCodeGroup by remember { mutableStateOf<Group?>(null) }
 
+    LaunchedEffect(Unit) {
+        viewModel.loadGroups()
+    }
+
     Scaffold(
         containerColor = KnotCream,
         topBar = {
@@ -122,6 +129,7 @@ fun GroupsScreen(
             else -> GroupsList(
                 padding = padding,
                 groups = uiState.groups,
+                memberAvatarInfo = uiState.memberAvatarInfo,
                 currentUserId = viewModel.currentUserId,
                 onGroupClick = onGroupClick,
                 onLeaveGroup = { group -> pendingLeaveGroup = group },
@@ -239,6 +247,7 @@ private fun EmptyGroupsState(padding: PaddingValues, onJoinClick: () -> Unit) {
 private fun GroupsList(
     padding: PaddingValues,
     groups: List<Group>,
+    memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo>,
     currentUserId: String,
     onGroupClick: (Group) -> Unit,
     onLeaveGroup: (Group) -> Unit,
@@ -254,6 +263,7 @@ private fun GroupsList(
         items(groups, key = { it.id }) { group ->
             GroupCard(
                 group = group,
+                memberAvatarInfo = memberAvatarInfo,
                 currentUserId = currentUserId,
                 onClick = { onGroupClick(group) },
                 onLeaveGroup = { onLeaveGroup(group) },
@@ -268,6 +278,7 @@ private fun GroupsList(
 @Composable
 private fun GroupCard(
     group: Group,
+    memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo>,
     currentUserId: String,
     onClick: () -> Unit,
     onLeaveGroup: () -> Unit,
@@ -302,8 +313,22 @@ private fun GroupCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.padding(top = 12.dp)
                 ) {
-                    items(group.memberCount) {
-                        MemberAvatarPlaceholder()
+                    if (group.memberIds.isNotEmpty()) {
+                        items(group.memberIds) { memberId ->
+                            val info = memberAvatarInfo[memberId]
+                            if (info != null) {
+                                ColoredMemberAvatar(
+                                    initial = info.displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                                    colorHex = info.avatarColor
+                                )
+                            } else {
+                                MemberAvatarPlaceholder()
+                            }
+                        }
+                    } else {
+                        items(group.memberCount) {
+                            MemberAvatarPlaceholder()
+                        }
                     }
                 }
             }
@@ -447,6 +472,19 @@ private fun MemberAvatarPlaceholder() {
             CircleShape
         )
     )
+}
+
+@Composable
+private fun ColoredMemberAvatar(initial: String, colorHex: String) {
+    Box(
+        modifier = Modifier.size(56.dp).background(
+            Color(android.graphics.Color.parseColor(colorHex)),
+            CircleShape
+        ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = initial, color = Color.White, fontWeight = FontWeight.Bold)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

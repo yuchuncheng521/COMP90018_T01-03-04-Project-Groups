@@ -40,7 +40,8 @@ data class AccountSettingsUiState(
     val isMicrophoneAllowed: Boolean = false,
     val isLocationAllowed: Boolean = false,
     val isBluetoothAllowed: Boolean = false,
-    val nearbyError: String? = null
+    val nearbyError: String? = null,
+    val avatarColorHex: String = "#C97C5D"
 )
 
 class AccountSettingsViewModel(
@@ -74,6 +75,22 @@ class AccountSettingsViewModel(
                     nearbyError = message
                 )
             }
+        }
+    }
+
+    fun refreshAvatarColor() {
+        viewModelScope.launch {
+            val color = repository.getAvatarColor()
+            if (color != null) {
+                uiState = uiState.copy(avatarColorHex = color)
+            }
+        }
+    }
+
+    fun updateAvatarColor(colorHex: String) {
+        uiState = uiState.copy(avatarColorHex = colorHex)
+        viewModelScope.launch {
+            repository.updateAvatarColor(colorHex)
         }
     }
 
