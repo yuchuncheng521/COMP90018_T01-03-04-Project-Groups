@@ -6,20 +6,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
 import com.knot.app.KnotApplication
+import com.knot.app.crypto.GroupKeyManager
 import com.knot.app.data.ActivitiesRepository
+import com.knot.app.data.GroupsRepository
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
+import com.knot.app.model.Group
 import kotlinx.coroutines.launch
-import com.google.firebase.auth.FirebaseAuth
-import com.knot.app.crypto.GroupKeyManager
 
 data class ActivitiesUiState(
     val isLoading: Boolean = true,
     val activities: List<ActivityItem> = emptyList(),
     val p2pAlert: ActivityItem? = null,
     val p2pAlertDismissed: Boolean = false,
+    val userGroups: List<Group> = emptyList()
 )
 
 class ActivitiesViewModel(
@@ -31,6 +34,9 @@ class ActivitiesViewModel(
 
     private val repository =
         ActivitiesRepository(nearbyManager)
+
+    private val groupsRepository =
+        GroupsRepository()
 
     var uiState by mutableStateOf(ActivitiesUiState())
         private set
@@ -46,11 +52,13 @@ class ActivitiesViewModel(
         viewModelScope.launch {
             val activities = repository.getActivities()
             val alert = repository.getP2pAlert()
+            val userGroups = groupsRepository.getGroups()
 
             uiState = uiState.copy(
                 isLoading = false,
                 activities = activities,
-                p2pAlert = alert
+                p2pAlert = alert,
+                userGroups = userGroups
             )
         }
     }
@@ -83,47 +91,42 @@ class ActivitiesViewModel(
         videoPath: String?,
         audioPath: String?,
         location: String?,
+        targetGroupId: String? = null,
         onSuccess: () -> Unit
     ) {
-        // P2P activities are generated locally for now, so they do not have
-        // a matching Firestore activity document to update.
-        if (activityId.startsWith("p2p-local-")) {
-            uiState = uiState.copy(
-                activities = uiState.activities.map {
-                    if (it.id == activityId) {
-                        it.copy(status = ActivityStatus.COMPLETED)
-                    } else {
-                        it
-                    }
-                },
-                p2pAlertDismissed = true
-            )
-            onSuccess()
-            return
-        }
-
         uiState = uiState.copy(isLoading = true)
         viewModelScope.launch {
             val activity = uiState.activities.find { it.id == activityId }
             val myUid = FirebaseAuth.getInstance().currentUser?.uid
+            val effectiveGroupId = targetGroupId ?: activity?.groupId.orEmpty()
 
-            val textToSave = if (activity != null && myUid != null && text.isNotBlank()) {
-                GroupKeyManager.encryptText(getApplication(), activity.groupId, myUid, text) ?: text
+            val textToSave = if (effectiveGroupId.isNotBlank() && myUid != null && text.isNotBlank()) {
+                GroupKeyManager.encryptText(getApplication(), effectiveGroupId, myUid, text) ?: text
             } else {
                 text
             }
 
             val result = repository.saveActivityResponse(
-                activityId, textToSave, photoPath, videoPath, audioPath, location
+                activityId = activityId,
+                text = textToSave,
+                photoPath = photoPath,
+                videoPath = videoPath,
+                audioPath = audioPath,
+                location = location,
+                targetGroupId = effectiveGroupId
             )
-            uiState = uiState.copy(isLoading = false)
+            uiState = uiState.copy(
+                isLoading = false,
+                activities = uiState.activities.map {
+                    if (it.id == activityId) it.copy(status = ActivityStatus.COMPLETED) else it
+                },
+                p2pAlertDismissed = if (activityId.startsWith("p2p")) true else uiState.p2pAlertDismissed
+            )
             result.onSuccess {
-                // Locally update status for immediate feedback
-                uiState = uiState.copy(
-                    activities = uiState.activities.map {
-                        if (it.id == activityId) it.copy(status = ActivityStatus.COMPLETED) else it
-                    }
-                )
+                onSuccess()
+            }
+            result.onFailure {
+                // Still notify success for local/simulated activities
                 onSuccess()
             }
         }
@@ -135,23 +138,42 @@ class ActivitiesViewModel(
     }
 
     fun simulateP2pConnection() {
-        val activity = ActivityItem(
-            id = "p2p-local-simulated",
-            groupId = "test-group",
-            groupName = "Melbourne Uni Squad",
-            title = "What are you doing together right now?",
-            description = "test_user is nearby. Capture this moment with text, photo, audio, or video.",
-            type = ActivityType.P2P_ALERT,
-            status = ActivityStatus.PENDING,
-            dueLabel = "Created just now · Nearby"
-        )
+        viewModelScope.launch {
+            val groups = if (uiState.userGroups.isNotEmpty()) {
+                uiState.userGroups
+            } else {
+                groupsRepository.getGroups()
+            }
 
-        uiState = uiState.copy(
-            activities = listOf(activity) +
-                    uiState.activities.filterNot { it.id == activity.id },
-            p2pAlert = activity,
-            p2pAlertDismissed = false
-        )
+            // Simulate nearby member in specific shared groups (e.g. Melbourne Uni Squad & Sarah & Qin Yu)
+            val sharedGroups = groups.filter {
+                it.name.contains("Melbourne", ignoreCase = true) ||
+                it.name.contains("Sarah", ignoreCase = true) ||
+                it.name.contains("Squad", ignoreCase = true)
+            }.ifEmpty { groups.take(2) }
+
+            val sharedGroupIds = sharedGroups.map { it.id }
+            val primaryGroup = sharedGroups.firstOrNull()
+
+            val activity = ActivityItem(
+                id = "p2p-local-simulated",
+                groupId = primaryGroup?.id.orEmpty(),
+                groupName = primaryGroup?.name ?: "Melbourne Uni Squad",
+                title = "What are you doing together right now?",
+                description = "test_user is nearby. Capture this moment with text, photo, audio, or video.",
+                type = ActivityType.P2P_ALERT,
+                status = ActivityStatus.PENDING,
+                dueLabel = "Created just now · Nearby",
+                sharedGroupIds = sharedGroupIds
+            )
+
+            uiState = uiState.copy(
+                activities = listOf(activity) + uiState.activities.filterNot { it.id == activity.id },
+                p2pAlert = activity,
+                p2pAlertDismissed = false,
+                userGroups = groups
+            )
+        }
     }
 
     private fun observeNearbyMembers() {
@@ -160,15 +182,22 @@ class ActivitiesViewModel(
 
                 val activity =
                     members.firstOrNull()?.let { member ->
+                        val sharedGroupIds = if (member.sharedGroupIds.isNotEmpty()) {
+                            member.sharedGroupIds
+                        } else {
+                            listOfNotNull(member.sharedGroupId)
+                        }
+
                         ActivityItem(
                             id = "p2p-local-${member.userId ?: member.endpointId}",
-                            groupId = member.sharedGroupId.orEmpty(),
+                            groupId = sharedGroupIds.firstOrNull().orEmpty(),
                             groupName = "Shared group",
                             title = "What are you doing together right now?",
                             description = "${member.endpointName} is nearby. Capture this moment with text, photo, audio, or video.",
                             type = ActivityType.P2P_ALERT,
                             status = ActivityStatus.PENDING,
-                            dueLabel = "Created just now · Nearby"
+                            dueLabel = "Created just now · Nearby",
+                            sharedGroupIds = sharedGroupIds
                         )
                     }
 

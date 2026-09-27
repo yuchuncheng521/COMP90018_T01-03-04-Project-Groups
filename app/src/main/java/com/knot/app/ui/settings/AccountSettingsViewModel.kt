@@ -182,7 +182,7 @@ class AccountSettingsViewModel @JvmOverloads constructor(
             isCameraAllowed = PermissionManager.hasCameraPermission(context),
             isMicrophoneAllowed = PermissionManager.hasMicrophonePermission(context),
             isLocationAllowed = PermissionManager.hasLocationPermission(context),
-            isBluetoothAllowed = PermissionManager.hasBluetoothPermission(context)
+            isBluetoothAllowed = PermissionManager.hasNearbyPermissions(context)
         )
     }
 

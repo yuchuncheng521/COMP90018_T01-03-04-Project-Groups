@@ -5,6 +5,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
+import com.knot.app.model.Memory
+import com.knot.app.model.MemoryType
 import kotlinx.coroutines.tasks.await
 import com.knot.app.nearby.NearbyManager
 
@@ -117,9 +119,10 @@ class ActivitiesRepository(
         photoPath: String?,
         videoPath: String?,
         audioPath: String?,
-        location: String?
+        location: String?,
+        targetGroupId: String? = null
     ): Result<Unit> = runCatching {
-        val uid = auth.currentUser?.uid ?: error("Not logged in")
+        val uid = auth.currentUser?.uid ?: "guest-uid"
         val response = mapOf(
             "activityId" to activityId,
             "userId" to uid,
@@ -128,12 +131,38 @@ class ActivitiesRepository(
             "videoPath" to videoPath,
             "audioPath" to audioPath,
             "location" to location,
+            "targetGroupId" to targetGroupId,
             "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
         )
-        firestore.collection("activity_responses").add(response).await()
-        
-        // After saving response, mark activity as completed
-        updateActivityStatus(activityId, ActivityStatus.COMPLETED).getOrThrow()
+        runCatching {
+            firestore.collection("activity_responses").add(response).await()
+        }
+
+        if (!targetGroupId.isNullOrBlank()) {
+            val memoryType = when {
+                !photoPath.isNullOrBlank() -> MemoryType.PHOTO
+                !videoPath.isNullOrBlank() -> MemoryType.VIDEO
+                !audioPath.isNullOrBlank() -> MemoryType.AUDIO
+                else -> MemoryType.TEXT
+            }
+            val memory = Memory(
+                groupId = targetGroupId,
+                authorId = uid,
+                authorName = auth.currentUser?.displayName.orEmpty().ifBlank { "Group member" },
+                activityId = activityId,
+                type = memoryType,
+                textContent = text,
+                contentUrl = photoPath ?: videoPath ?: audioPath ?: "",
+                createdAt = System.currentTimeMillis()
+            )
+            runCatching {
+                TimelineRepository().createMemory(memory)
+            }
+        }
+
+        if (!activityId.startsWith("p2p-local-")) {
+            updateActivityStatus(activityId, ActivityStatus.COMPLETED)
+        }
     }
 
     companion object {
