@@ -33,9 +33,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
 import com.knot.app.R
 
@@ -51,7 +48,7 @@ fun GroupDetailScreen(
     val albums = listOf("January 2026", "February 2026", "March 2026", "April 2026", "May 2026")
 
     Scaffold(
-        containerColor = KnotCream,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -73,7 +70,7 @@ fun GroupDetailScreen(
                     text = "Books",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 12.dp)
                 )
             }
@@ -83,8 +80,8 @@ fun GroupDetailScreen(
             Button(
                 onClick = onCreateNewClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = KnotDarkBrown,
-                    contentColor = KnotCream
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
                 modifier = Modifier
@@ -116,14 +113,14 @@ private fun AlbumPill(label: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .border(1.dp, KnotDarkBrown, RoundedCornerShape(12.dp))
-            .background(KnotSand, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            color = KnotDarkBrown,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyLarge
         )
     }
