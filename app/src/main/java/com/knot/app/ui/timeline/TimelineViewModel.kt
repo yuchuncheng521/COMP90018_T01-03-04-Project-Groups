@@ -39,7 +39,7 @@ class TimelineViewModel(
     private val nearbyManager =
         (application as KnotApplication).nearbyManager
 
-    private val repository = TimelineRepository()
+    private val repository = TimelineRepository(application)
     private val activitiesRepository = ActivitiesRepository(nearbyManager)
 
     var uiState by mutableStateOf(TimelineUiState())
@@ -118,6 +118,6 @@ private fun weekLabelFor(weekStartMillis: Long): String {
     val cal = Calendar.getInstance().apply { timeInMillis = weekStartMillis }
     val weekOfMonth = cal.get(Calendar.WEEK_OF_MONTH)
     val start = SimpleDateFormat("MMM d", Locale.getDefault()).format(weekStartMillis)
-    val end = SimpleDateFormat("d", Locale.getDefault()).format(weekStartMillis + 6L * 24 * 60 * 60 * 1000)
+    val end = SimpleDateFormat("MMM d", Locale.getDefault()).format(weekStartMillis + 6L * 24 * 60 * 60 * 1000)
     return "Week $weekOfMonth · $start–$end"
 }

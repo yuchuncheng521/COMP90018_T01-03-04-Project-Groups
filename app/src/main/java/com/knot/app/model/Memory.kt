@@ -19,6 +19,7 @@ data class Memory(
     val authorId: String = "",
     val authorName: String = "",
     val activityId: String = "",       // empty if not tied to a quest/prompt
+    val activityTitle: String = "",
     val type: MemoryType = MemoryType.TEXT,
     val contentUrl: String = "",       // link to file in storage (photo/audio/video), empty for text
     val thumbnailUrl: String = "",     // small preview, used in monthly/weekly covers

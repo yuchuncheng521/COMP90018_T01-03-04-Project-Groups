@@ -26,12 +26,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.knot.app.ui.theme.JudsonFontFamily
 import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotDarkBrown
@@ -44,11 +46,14 @@ import com.knot.app.R
 fun GroupDetailScreen(
     groupId: String,
     onBackClick: () -> Unit,
-    onAlbumClick: (String) -> Unit = {},
-    onCreateNewClick: () -> Unit = {}
+    onAlbumClick: (AlbumItem) -> Unit = {}
 ) {
-    // TODO: replace with a real ViewModel fetching this group's albums by groupId
-    val albums = listOf("January 2026", "February 2026", "March 2026", "April 2026", "May 2026")
+    val viewModel: GroupAlbumViewModel = viewModel()
+    val uiState = viewModel.uiState
+
+    LaunchedEffect(groupId) {
+        viewModel.loadAlbums(groupId)
+    }
 
     Scaffold(
         containerColor = KnotCream,
@@ -60,51 +65,39 @@ fun GroupDetailScreen(
                     .statusBarsPadding()
                     .padding(8.dp)
             ) {
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(48.dp)
-                ) {
+                IconButton(onClick = onBackClick) {
                     Icon(
                         painter = painterResource(R.drawable.left_arrow),
-                        contentDescription = "Back to groups"
+                        contentDescription = "Back to groups",
+                        tint = KnotDarkBrown
                     )
                 }
+
                 Text(
                     text = "Books",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
                     color = KnotDarkBrown,
-                    modifier = Modifier.padding(start = 12.dp)
+                    modifier = Modifier.padding(start = 8.dp)
                 )
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Center,
-        floatingActionButton = {
-            Button(
-                onClick = onCreateNewClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = KnotDarkBrown,
-                    contentColor = KnotCream
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                modifier = Modifier
-                    .width(360.dp)
-                    .padding(horizontal = 24.dp)
-                    .height(52.dp)
-            ) {
-                Text("Create new", style = MaterialTheme.typography.titleMedium)
             }
         }
     ) { padding ->
+
         LazyColumn(
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(albums) { album ->
-                AlbumPill(label = album, onClick = { onAlbumClick(album) })
+            items(uiState.albums) { album ->
+                AlbumPill(
+                    label = album.label,
+                    onClick = {
+                        onAlbumClick(album)
+                    }
+                )
             }
         }
     }
