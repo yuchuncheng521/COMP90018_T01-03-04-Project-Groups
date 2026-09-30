@@ -113,9 +113,7 @@ class ActivitiesViewModel(
                 text
             }
 
-            val result = repository.saveActivityResponse(
-                activityId, textToSave, photoPath, videoPath, audioPath, location
-            )
+            val result = repository.saveActivityResponse(activityId, activity?.groupId ?: "", textToSave, photoPath, videoPath, audioPath, location)
             uiState = uiState.copy(isLoading = false)
             result.onSuccess {
                 // Locally update status for immediate feedback

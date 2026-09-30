@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -43,12 +45,16 @@ import com.knot.app.R
 @Composable
 fun GroupDetailScreen(
     groupId: String,
+    viewModel: GroupDetailViewModel,
     onBackClick: () -> Unit,
     onAlbumClick: (String) -> Unit = {},
     onCreateNewClick: () -> Unit = {}
 ) {
-    // TODO: replace with a real ViewModel fetching this group's albums by groupId
-    val albums = listOf("January 2026", "February 2026", "March 2026", "April 2026", "May 2026")
+    val uiState = viewModel.uiState
+
+    LaunchedEffect(groupId) {
+        viewModel.loadGroup(groupId)
+    }
 
     Scaffold(
         containerColor = KnotCream,
@@ -96,15 +102,43 @@ fun GroupDetailScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            items(albums) { album ->
-                AlbumPill(label = album, onClick = { onAlbumClick(album) })
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = KnotDarkBrown)
+                }
+            }
+            uiState.months.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No albums yet.",
+                        color = KnotDarkBrown,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    items(uiState.months) { month ->
+                        AlbumPill(label = month, onClick = { onAlbumClick(month) })
+                    }
+                }
             }
         }
     }
@@ -135,8 +169,8 @@ private fun GroupDetailScreenPreview() {
     KnotTheme {
         GroupDetailScreen(
             groupId = "1",
+            viewModel = GroupDetailViewModel(),
             onBackClick = {}
         )
     }
 }
-
