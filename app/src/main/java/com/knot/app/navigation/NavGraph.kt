@@ -34,6 +34,7 @@ import com.knot.app.ui.settings.DeleteAccountScreen
 import com.knot.app.ui.settings.EditProfileScreen
 import com.knot.app.ui.timeline.TimelineScreen
 import com.knot.app.ui.timeline.TimelineViewModel
+import com.knot.app.ui.groups.GroupDetailViewModel
 
 
 @Composable
@@ -139,9 +140,11 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             ) { backStackEntry ->
                 val groupId = backStackEntry.arguments?.getString("groupId").orEmpty()
                 val groupName = backStackEntry.arguments?.getString("groupName").orEmpty()
+                val groupDetailViewModel: GroupDetailViewModel = viewModel()
 
                 GroupDetailScreen(
                     groupId = groupId,
+                    viewModel = groupDetailViewModel,
                     onBackClick = { mainNavController.popBackStack() },
                     onAlbumClick = { album ->
                         mainNavController.navigate("monthDetail/${album}")

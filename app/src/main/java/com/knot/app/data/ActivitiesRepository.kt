@@ -1,12 +1,17 @@
 package com.knot.app.data
 
+import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
-import kotlinx.coroutines.tasks.await
 import com.knot.app.nearby.NearbyManager
+import kotlinx.coroutines.tasks.await
+import java.io.File
+import java.util.UUID
 
 /**
  * Loads the weekly prompts / activities assigned to the current user across all their groups.
@@ -23,6 +28,7 @@ class ActivitiesRepository(
 
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+    private val storage: FirebaseStorage by lazy { FirebaseStorage.getInstance() }
 
     suspend fun getActivities(): List<ActivityItem> {
         val uid = auth.currentUser?.uid ?: return sampleActivities
@@ -43,8 +49,8 @@ class ActivitiesRepository(
                     status = runCatching { ActivityStatus.valueOf(doc.getString("status") ?: "") }.getOrDefault(ActivityStatus.PENDING),
                     dueLabel = doc.getString("dueLabel") ?: "",
                 )
-            }.ifEmpty { sampleActivities }
-        }.getOrElse { sampleActivities }
+            }
+        }.getOrElse { emptyList() }
     }
 
     /**
@@ -111,8 +117,20 @@ class ActivitiesRepository(
         batch.commit().await()
     }
 
+    /**
+     * Saves a member's response to an activity. photoPath/videoPath/audioPath are LOCAL
+     * device file paths (from CameraScreen/AudioRecorderScreen) -- each one, if present,
+     * gets uploaded to Storage here and replaced with its real download URL before
+     * anything is written to Firestore. Previously this wrote the raw local path
+     * directly into Firestore, which is meaningless on any other device.
+     *
+     * groupId is required now (not previously passed) specifically so the Storage
+     * security rule can check group membership directly on this path, without an
+     * extra lookup through the activity document.
+     */
     suspend fun saveActivityResponse(
         activityId: String,
+        groupId: String,
         text: String,
         photoPath: String?,
         videoPath: String?,
@@ -120,20 +138,38 @@ class ActivitiesRepository(
         location: String?
     ): Result<Unit> = runCatching {
         val uid = auth.currentUser?.uid ?: error("Not logged in")
+
+        val photoUrl = photoPath?.let { uploadFile(it, groupId, activityId, "photo") }
+        val videoUrl = videoPath?.let { uploadFile(it, groupId, activityId, "video") }
+        val audioUrl = audioPath?.let { uploadFile(it, groupId, activityId, "audio") }
+
         val response = mapOf(
             "activityId" to activityId,
+            "groupId" to groupId,
             "userId" to uid,
             "text" to text,
-            "photoPath" to photoPath,
-            "videoPath" to videoPath,
-            "audioPath" to audioPath,
+            "photoUrl" to photoUrl,
+            "videoUrl" to videoUrl,
+            "audioUrl" to audioUrl,
             "location" to location,
-            "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            "timestamp" to FieldValue.serverTimestamp()
         )
         firestore.collection("activity_responses").add(response).await()
-        
+
         // After saving response, mark activity as completed
         updateActivityStatus(activityId, ActivityStatus.COMPLETED).getOrThrow()
+    }
+
+    private suspend fun uploadFile(localPath: String, groupId: String, activityId: String, kind: String): String {
+        val file = File(localPath)
+        val storageRef = storage.reference
+            .child("activity_responses")
+            .child(groupId)
+            .child(activityId)
+            .child("${kind}_${UUID.randomUUID()}.${file.extension}")
+
+        storageRef.putFile(Uri.fromFile(file)).await()
+        return storageRef.downloadUrl.await().toString()
     }
 
     companion object {
