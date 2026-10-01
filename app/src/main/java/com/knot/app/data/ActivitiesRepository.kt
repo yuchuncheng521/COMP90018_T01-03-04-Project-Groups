@@ -1,10 +1,12 @@
 package com.knot.app.data
 
+import android.content.Context
 import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.knot.app.crypto.GroupKeyManager
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
@@ -129,6 +131,7 @@ class ActivitiesRepository(
      * extra lookup through the activity document.
      */
     suspend fun saveActivityResponse(
+        context: Context,
         activityId: String,
         groupId: String,
         text: String,
@@ -143,14 +146,23 @@ class ActivitiesRepository(
         val videoUrl = videoPath?.let { uploadFile(it, groupId, activityId, "video") }
         val audioUrl = audioPath?.let { uploadFile(it, groupId, activityId, "audio") }
 
+        // Encrypt the Storage download URLs the same way the text response is
+        // encrypted (GroupKeyManager.encryptText only handles String, which a
+        // URL is). Note this encrypts the URL, not the file bytes behind it --
+        // the actual photo/video/audio content in Storage is still only
+        // protected by the Storage security rules, not end-to-end encrypted.
+        val encryptedPhotoUrl = photoUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
+        val encryptedVideoUrl = videoUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
+        val encryptedAudioUrl = audioUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
+
         val response = mapOf(
             "activityId" to activityId,
             "groupId" to groupId,
             "userId" to uid,
             "text" to text,
-            "photoUrl" to photoUrl,
-            "videoUrl" to videoUrl,
-            "audioUrl" to audioUrl,
+            "photoUrl" to encryptedPhotoUrl,
+            "videoUrl" to encryptedVideoUrl,
+            "audioUrl" to encryptedAudioUrl,
             "location" to location,
             "timestamp" to FieldValue.serverTimestamp()
         )
