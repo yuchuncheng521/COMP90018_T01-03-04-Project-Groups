@@ -5,9 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import android.app.Application
-import com.knot.app.KnotApplication
 import androidx.lifecycle.AndroidViewModel
-import com.knot.app.data.ActivitiesRepository
 import com.knot.app.data.TimelineRepository
 import com.knot.app.model.Memory
 import kotlinx.coroutines.launch
@@ -36,33 +34,28 @@ class TimelineViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val nearbyManager =
-        (application as KnotApplication).nearbyManager
-
     private val repository = TimelineRepository(application)
-    private val activitiesRepository = ActivitiesRepository(nearbyManager)
 
     var uiState by mutableStateOf(TimelineUiState())
         private set
 
     fun loadTimeline(groupId: String) {
         uiState = uiState.copy(isLoading = true)
+
         viewModelScope.launch {
             val memories = repository.getTimelineForGroup(groupId)
-            // Map activityId -> question title, so each week can show its prompt.
-            val questionsById = runCatching { activitiesRepository.getActivities() }
-                .getOrDefault(emptyList())
-                .filter { it.groupId == groupId }
-                .associate { it.id to it.title }
 
             val weeks = memories
-                .sortedBy { it.createdAt }
+                .sortedByDescending { it.createdAt }
                 .groupBy { weekStartMillisFor(it.createdAt) }
                 .toSortedMap()
                 .map { (weekStart, weekMemories) ->
+
                     val questionText = weekMemories
-                        .firstNotNullOfOrNull { questionsById[it.activityId] }
+                        .firstOrNull { it.activityTitle.isNotBlank() }
+                        ?.activityTitle
                         ?: "No prompt answered yet this week"
+
                     WeekBucket(
                         weekStartMillis = weekStart,
                         monthLabel = monthLabelFor(weekStart),
@@ -75,7 +68,7 @@ class TimelineViewModel(
             uiState = TimelineUiState(
                 isLoading = false,
                 weeks = weeks,
-                currentWeekIndex = (weeks.size - 1).coerceAtLeast(0) // open on the most recent week
+                currentWeekIndex = (weeks.size - 1).coerceAtLeast(0)
             )
         }
     }

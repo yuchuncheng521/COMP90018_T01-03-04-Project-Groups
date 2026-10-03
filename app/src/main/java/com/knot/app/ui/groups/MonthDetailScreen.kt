@@ -1,7 +1,6 @@
 package com.knot.app.ui.groups
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,10 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -38,12 +33,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.knot.app.R
 import com.knot.app.ui.theme.JudsonFontFamily
 import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
+import com.knot.app.model.MemoryType
 
 
 @Preview(showBackground = true)
@@ -194,26 +192,42 @@ fun MonthDetailScreen(
 
                             Spacer(Modifier.height(8.dp))
 
-                            Text(
-                                text = when {
-                                    memory.textContent.isNotBlank() ->
-                                        memory.textContent
+                            when (memory.type) {
+                                MemoryType.TEXT -> {
+                                    Text(
+                                        text = memory.textContent,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = KnotDarkBrown
+                                    )
+                                }
 
-                                    memory.type.name == "PHOTO" ->
-                                        "Photo response"
+                                MemoryType.PHOTO -> {
+                                    AsyncImage(
+                                        model = memory.contentUrl,
+                                        contentDescription = "Photo by ${memory.authorName}",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
 
-                                    memory.type.name == "VIDEO" ->
-                                        "Video response"
+                                MemoryType.AUDIO -> {
+                                    Text(
+                                        text = "Audio response",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = KnotDarkBrown
+                                    )
+                                }
 
-                                    memory.type.name == "AUDIO" ->
-                                        "Audio response"
-
-                                    else ->
-                                        "Response"
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = KnotDarkBrown
-                            )
+                                MemoryType.VIDEO -> {
+                                    Text(
+                                        text = "Video response",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = KnotDarkBrown
+                                    )
+                                }
+                            }
                         }
                     }
                 }
