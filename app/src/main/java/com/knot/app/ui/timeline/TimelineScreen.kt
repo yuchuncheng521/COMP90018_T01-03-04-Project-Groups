@@ -39,6 +39,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.knot.app.model.Memory
 import com.knot.app.model.MemoryType
 
@@ -169,24 +171,49 @@ private fun AnswerCard(memory: Memory) {
             Text(memory.textContent, style = MaterialTheme.typography.bodySmall)
         }
 
-        MemoryType.PHOTO, MemoryType.VIDEO -> Box(
+        MemoryType.PHOTO -> Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(120.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
+                .background(
+                    MaterialTheme.colorScheme.primaryContainer,
+                    RoundedCornerShape(10.dp)
+                )
         ) {
+            AsyncImage(
+                model = memory.contentUrl,
+                contentDescription = "Photo by ${memory.authorName}",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+
             Text(
                 memory.authorName,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(8.dp)
-                    .background(Color.White.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                    .background(
+                        Color.White.copy(alpha = 0.6f),
+                        RoundedCornerShape(6.dp)
+                    )
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             )
-            if (memory.type == MemoryType.VIDEO) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.align(Alignment.Center))
-            }
+        }
+
+        MemoryType.VIDEO -> Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(
+                    MaterialTheme.colorScheme.primaryContainer,
+                    RoundedCornerShape(10.dp)
+                )
+        ) {
+            Text(
+                "Video",
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
 
         MemoryType.AUDIO -> Box(

@@ -1,7 +1,6 @@
 package com.knot.app.ui.groups
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,10 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -36,12 +31,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.knot.app.R
 import com.knot.app.ui.theme.JudsonFontFamily
 import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
+import com.knot.app.model.MemoryType
 
 
 @Preview(showBackground = true)
@@ -49,7 +49,9 @@ import com.knot.app.ui.theme.KnotTheme
 private fun MonthDetailScreenPreview() {
     KnotTheme {
         MonthDetailScreen(
-            monthLabel = "August",
+            groupId = "preview-group",
+            year = 2026,
+            month = 8,
             onBackClick = {}
         )
     }
@@ -57,14 +59,23 @@ private fun MonthDetailScreenPreview() {
 
 @Composable
 fun MonthDetailScreen(
-    monthLabel: String, // e.g. "August" — passed straight through from whatever AlbumPill was tapped
+    groupId: String,
+    year: Int,
+    month: Int,
     onBackClick: () -> Unit
 ) {
-    // TODO: replace all three with a real ViewModel — weeks/prompt/responses for this album, from Firestore
-    val weeks = listOf("Week 1 - Aug 25-31", "Week 2 - Sep 1-7", "Week 3 - Sep 8-14")
-    var weekIndex by remember { mutableStateOf(0) }
-    val prompt = "What made you smile"
-    val memberResponses = listOf("Member", "Member", "Member")
+    val viewModel: MonthDetailViewModel = viewModel()
+    val uiState = viewModel.uiState
+
+    LaunchedEffect(groupId, year, month) {
+        viewModel.loadMonth(
+            groupId = groupId,
+            year = year,
+            month = month
+        )
+    }
+
+    val currentWeek = uiState.currentWeek
 
     Scaffold(
         containerColor = KnotCream,
@@ -84,7 +95,7 @@ fun MonthDetailScreen(
                     )
                 }
                 Text(
-                    text = monthLabel,
+                    text = "${java.text.DateFormatSymbols().months[month - 1]} $year",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
                     color = KnotDarkBrown,
@@ -107,8 +118,8 @@ fun MonthDetailScreen(
                     .padding(vertical = 8.dp)
             ) {
                 IconButton(
-                    onClick = { weekIndex-- },
-                    enabled = weekIndex > 0
+                    onClick = { viewModel.goToPreviousWeek() },
+                    enabled = uiState.currentWeekIndex > 0
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
@@ -117,14 +128,14 @@ fun MonthDetailScreen(
                     )
                 }
                 Text(
-                    text = weeks[weekIndex],
+                    text = currentWeek?.weekLabel ?: "No responses yet",
                     style = MaterialTheme.typography.bodyLarge,
                     color = KnotDarkBrown,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 IconButton(
-                    onClick = { weekIndex++ },
-                    enabled = weekIndex < weeks.lastIndex
+                    onClick = { viewModel.goToNextWeek() },
+                    enabled = uiState.currentWeekIndex < uiState.weeks.lastIndex
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -143,7 +154,7 @@ fun MonthDetailScreen(
                     .padding(24.dp)
             ) {
                 Text(
-                    text = "\u201c$prompt\u201d",
+                    text = "\u201c${currentWeek?.questionText ?: "No prompt answered this week"}\u201d",
                     style = MaterialTheme.typography.titleMedium,
                     color = KnotDarkBrown,
                     textAlign = TextAlign.Center,
@@ -159,20 +170,65 @@ fun MonthDetailScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                items(memberResponses) { memberName ->
+                items(currentWeek?.memories ?: emptyList()) { memory ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
-                            .background(KnotSand.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .background(
+                                KnotSand.copy(alpha = 0.4f),
+                                RoundedCornerShape(12.dp)
+                            )
                             .padding(16.dp)
                     ) {
-                        Text(
-                            text = memberName,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = KnotDarkBrown,
-                            modifier = Modifier.align(Alignment.BottomStart)
-                        )
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = memory.authorName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = KnotDarkBrown
+                            )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            when (memory.type) {
+                                MemoryType.TEXT -> {
+                                    Text(
+                                        text = memory.textContent,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = KnotDarkBrown
+                                    )
+                                }
+
+                                MemoryType.PHOTO -> {
+                                    AsyncImage(
+                                        model = memory.contentUrl,
+                                        contentDescription = "Photo by ${memory.authorName}",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+
+                                MemoryType.AUDIO -> {
+                                    Text(
+                                        text = "Audio response",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = KnotDarkBrown
+                                    )
+                                }
+
+                                MemoryType.VIDEO -> {
+                                    Text(
+                                        text = "Video response",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = KnotDarkBrown
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

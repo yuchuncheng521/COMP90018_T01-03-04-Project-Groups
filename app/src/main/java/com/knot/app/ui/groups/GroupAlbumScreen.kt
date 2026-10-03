@@ -5,22 +5,16 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,26 +28,25 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.knot.app.R
 import com.knot.app.ui.theme.JudsonFontFamily
 import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
-import com.knot.app.R
-
 
 @Composable
 fun GroupDetailScreen(
     groupId: String,
-    viewModel: GroupDetailViewModel,
     onBackClick: () -> Unit,
-    onAlbumClick: (String) -> Unit = {},
-    onCreateNewClick: () -> Unit = {}
+    onAlbumClick: (AlbumItem) -> Unit = {}
 ) {
+    val viewModel: GroupAlbumViewModel = viewModel()
     val uiState = viewModel.uiState
 
     LaunchedEffect(groupId) {
-        viewModel.loadGroup(groupId)
+        viewModel.loadAlbums(groupId)
     }
 
     Scaffold(
@@ -67,41 +60,26 @@ fun GroupDetailScreen(
                     .padding(8.dp)
             ) {
                 IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(48.dp)
+                    onClick = onBackClick
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.left_arrow),
-                        contentDescription = "Back to groups"
+                        contentDescription = "Back to groups",
+                        tint = KnotDarkBrown
                     )
                 }
+
                 Text(
                     text = "Books",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
                     color = KnotDarkBrown,
-                    modifier = Modifier.padding(start = 12.dp)
+                    modifier = Modifier.padding(start = 8.dp)
                 )
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Center,
-        floatingActionButton = {
-            Button(
-                onClick = onCreateNewClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = KnotDarkBrown,
-                    contentColor = KnotCream
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                modifier = Modifier
-                    .width(360.dp)
-                    .padding(horizontal = 24.dp)
-                    .height(52.dp)
-            ) {
-                Text("Create new", style = MaterialTheme.typography.titleMedium)
             }
         }
     ) { padding ->
+
         when {
             uiState.isLoading -> {
                 Box(
@@ -110,10 +88,13 @@ fun GroupDetailScreen(
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = KnotDarkBrown)
+                    CircularProgressIndicator(
+                        color = KnotDarkBrown
+                    )
                 }
             }
-            uiState.months.isEmpty() -> {
+
+            uiState.albums.isEmpty() -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -127,16 +108,22 @@ fun GroupDetailScreen(
                     )
                 }
             }
+
             else -> {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.months) { month ->
-                        AlbumPill(label = month, onClick = { onAlbumClick(month) })
+                    items(uiState.albums) { album ->
+                        AlbumPill(
+                            label = album.label,
+                            onClick = {
+                                onAlbumClick(album)
+                            }
+                        )
                     }
                 }
             }
@@ -145,13 +132,23 @@ fun GroupDetailScreen(
 }
 
 @Composable
-private fun AlbumPill(label: String, onClick: () -> Unit) {
+private fun AlbumPill(
+    label: String,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .border(1.dp, KnotDarkBrown, RoundedCornerShape(12.dp))
-            .background(KnotSand, RoundedCornerShape(12.dp))
+            .border(
+                1.dp,
+                KnotDarkBrown,
+                RoundedCornerShape(12.dp)
+            )
+            .background(
+                KnotSand,
+                RoundedCornerShape(12.dp)
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -169,7 +166,6 @@ private fun GroupDetailScreenPreview() {
     KnotTheme {
         GroupDetailScreen(
             groupId = "1",
-            viewModel = GroupDetailViewModel(),
             onBackClick = {}
         )
     }

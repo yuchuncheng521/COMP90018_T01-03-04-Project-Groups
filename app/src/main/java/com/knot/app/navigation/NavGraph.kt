@@ -140,14 +140,14 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             ) { backStackEntry ->
                 val groupId = backStackEntry.arguments?.getString("groupId").orEmpty()
                 val groupName = backStackEntry.arguments?.getString("groupName").orEmpty()
-                val groupDetailViewModel: GroupDetailViewModel = viewModel()
 
                 GroupDetailScreen(
                     groupId = groupId,
-                    viewModel = groupDetailViewModel,
                     onBackClick = { mainNavController.popBackStack() },
                     onAlbumClick = { album ->
-                        mainNavController.navigate("monthDetail/${album}")
+                        mainNavController.navigate(
+                            "monthDetail/${groupId}/${album.year}/${album.month}"
+                        )
                     }
                 )
             }
@@ -204,14 +204,27 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             }
 
             composable(
-                route = "monthDetail/{monthLabel}",
-                arguments = listOf(navArgument("monthLabel") { type = NavType.StringType })
+                route = "monthDetail/{groupId}/{year}/{month}",
+                arguments = listOf(
+                    navArgument("groupId") { type = NavType.StringType },
+                    navArgument("year") { type = NavType.IntType },
+                    navArgument("month") { type = NavType.IntType }
+                )
             ) { backStackEntry ->
-                val monthLabel = backStackEntry.arguments?.getString("monthLabel")
+
+                val groupId = backStackEntry.arguments?.getString("groupId")
+                    ?: return@composable
+
+                val year = backStackEntry.arguments?.getInt("year")
+                    ?: return@composable
+
+                val month = backStackEntry.arguments?.getInt("month")
                     ?: return@composable
 
                 MonthDetailScreen(
-                    monthLabel = monthLabel,
+                    groupId = groupId,
+                    year = year,
+                    month = month,
                     onBackClick = { mainNavController.popBackStack() }
                 )
             }
