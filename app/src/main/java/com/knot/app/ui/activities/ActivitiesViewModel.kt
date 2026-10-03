@@ -114,7 +114,14 @@ class ActivitiesViewModel(
             }
 
             val result = repository.saveActivityResponse(
-                activityId, textToSave, photoPath, videoPath, audioPath, location
+                context = getApplication(),
+                activityId = activityId,
+                groupId = activity?.groupId ?: "",
+                text = textToSave,
+                photoPath = photoPath,
+                videoPath = videoPath,
+                audioPath = audioPath,
+                location = location
             )
             uiState = uiState.copy(isLoading = false)
             result.onSuccess {

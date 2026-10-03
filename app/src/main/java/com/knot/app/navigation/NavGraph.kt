@@ -34,6 +34,7 @@ import com.knot.app.ui.settings.DeleteAccountScreen
 import com.knot.app.ui.settings.EditProfileScreen
 import com.knot.app.ui.timeline.TimelineScreen
 import com.knot.app.ui.timeline.TimelineViewModel
+import com.knot.app.ui.groups.GroupDetailViewModel
 
 
 @Composable
