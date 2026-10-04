@@ -106,3 +106,65 @@ exports.notifyGroupOnMemberReply = onDocumentCreated(
     );
   }
 );
+
+
+exports.notifyAssignedMemberOnNewPrompt = onDocumentCreated(
+  {
+    document: "activities/{activityId}",
+    region: "australia-southeast2",
+  },
+  async (event) => {
+    const activity = event.data?.data();
+    if (!activity) {
+      return;
+    }
+
+    const assignedTo = activity.assignedTo;
+    const createdBy = activity.createdBy;
+
+    // createActivity fans out one activity document per group member.
+    // Do not notify the person who created the prompt about their own copy.
+    if (!assignedTo || !createdBy || assignedTo === createdBy) {
+      return;
+    }
+
+    const [recipientSnapshot, creatorSnapshot] = await Promise.all([
+      db.collection("users").doc(assignedTo).get(),
+      db.collection("users").doc(createdBy).get(),
+    ]);
+
+    const token = recipientSnapshot.get("fcmToken");
+    if (typeof token !== "string" || token.length === 0) {
+      console.log(
+        `New prompt notification skipped: no FCM token for ${assignedTo}.`
+      );
+      return;
+    }
+
+    const creatorName =
+      creatorSnapshot.get("displayName") || "A group member";
+    const groupName = activity.groupName || "your group";
+    const promptTitle = activity.title || "a new activity";
+
+    const messageId = await getMessaging().send({
+      token,
+      notification: {
+        title: "New activity in Knot",
+        body: `${creatorName} added "${promptTitle}" in ${groupName}.`,
+      },
+      data: {
+        type: "new_prompt",
+        groupId: activity.groupId || "",
+        activityId: event.params.activityId || "",
+        createdBy,
+      },
+      android: {
+        priority: "high",
+      },
+    });
+
+    console.log(
+      `New prompt notification sent to ${assignedTo}: ${messageId}`
+    );
+  }
+);
