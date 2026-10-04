@@ -174,6 +174,19 @@ fun AccountSettingsScreen(
         }
     }
 
+    val weeklyPromptPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.setWeeklyPromptReminders(granted)
+        if (!granted) {
+            Toast.makeText(
+                context,
+                "Notification permission is required for weekly prompt reminders.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -281,7 +294,7 @@ fun AccountSettingsScreen(
                             if (alreadyGranted) {
                                 viewModel.setWeeklyPromptReminders(true)
                             } else {
-                                notificationPermissionLauncher.launch(
+                                weeklyPromptPermissionLauncher.launch(
                                     Manifest.permission.POST_NOTIFICATIONS
                                 )
                             }
