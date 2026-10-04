@@ -12,7 +12,7 @@ object NotificationPreferences {
         context.getSharedPreferences(
             PREFS_NAME,
             Context.MODE_PRIVATE
-        ).getBoolean(KEY_PUSH_ENABLED, true)
+        ).getBoolean(KEY_PUSH_ENABLED, false)
 
     fun setPushEnabled(
         context: Context,
