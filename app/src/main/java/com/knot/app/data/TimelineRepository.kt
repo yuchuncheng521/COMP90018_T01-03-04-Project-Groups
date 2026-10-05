@@ -43,26 +43,19 @@ import kotlinx.coroutines.coroutineScope
                         )
             }
 
-            val activityIds = activitySnapshot.documents.map { it.id }
+            // 2. Get every response for this group, queried directly by groupId
+            // (stored on the response doc itself) rather than by joining
+            // through the activities collection's document IDs. A member's
+            // own activity doc is deleted when they leave/are removed from
+            // the group (or the whole group is deleted), but their past
+            // responses should still show up in everyone's shared timeline
+            // -- querying by activityId would silently drop those.
+            val responseSnapshot = firestore.collection("activity_responses")
+                .whereEqualTo("groupId", groupId)
+                .get()
+                .await()
 
-            if (activityIds.isEmpty()) {
-                return@runCatching emptyList<Memory>()
-            }
-
-            // 2. Get all responses belonging to those activities
-            // Firestore whereIn queries are limited, so use batches of 30
-            val responseSnapshots = coroutineScope {
-                activityIds.chunked(30).map { chunk ->
-                    async {
-                        firestore.collection("activity_responses")
-                            .whereIn("activityId", chunk)
-                            .get()
-                            .await()
-                    }
-                }.awaitAll()
-            }
-
-            val responseDocuments = responseSnapshots.flatMap { it.documents }
+            val responseDocuments = responseSnapshot.documents
 
             if (responseDocuments.isEmpty()) {
                 return@runCatching emptyList<Memory>()
@@ -80,10 +73,6 @@ import kotlinx.coroutines.coroutineScope
 
             responseDocuments.forEach { response ->
                 val activityId = response.getString("activityId")
-                    ?: return@forEach
-
-                val activity = activitySnapshot.documents
-                    .firstOrNull { it.id == activityId }
                     ?: return@forEach
 
                 val authorId = response.getString("userId")
