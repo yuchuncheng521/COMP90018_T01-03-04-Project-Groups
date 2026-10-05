@@ -174,6 +174,19 @@ fun AccountSettingsScreen(
         }
     }
 
+    val weeklyPromptPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.setWeeklyPromptReminders(granted)
+        if (!granted) {
+            Toast.makeText(
+                context,
+                "Notification permission is required for weekly prompt reminders.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -269,7 +282,26 @@ fun AccountSettingsScreen(
                     title = "Weekly prompt reminders",
                     subtitle = "A nudge if you haven't answered this week's prompt",
                     checked = uiState.weeklyPromptRemindersEnabled,
-                    onCheckedChange = viewModel::setWeeklyPromptReminders
+                    onCheckedChange = { enabled ->
+                        if (!enabled) {
+                            viewModel.setWeeklyPromptReminders(false)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            val alreadyGranted = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) == PackageManager.PERMISSION_GRANTED
+
+                            if (alreadyGranted) {
+                                viewModel.setWeeklyPromptReminders(true)
+                            } else {
+                                weeklyPromptPermissionLauncher.launch(
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                            }
+                        } else {
+                            viewModel.setWeeklyPromptReminders(true)
+                        }
+                    }
                 )
             }
             item {
