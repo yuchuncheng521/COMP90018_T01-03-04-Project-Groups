@@ -70,26 +70,30 @@ class ActivitiesViewModel(
         location: String?,
         onSuccess: () -> Unit
     ) {
-        // P2P activities are generated locally for now, so they do not have
-        // a matching Firestore activity document to update.
-        if (activityId.startsWith("p2p-local-")) {
-            uiState = uiState.copy(
-                activities = uiState.activities.map {
-                    if (it.id == activityId) {
-                        it.copy(status = ActivityStatus.COMPLETED)
-                    } else {
-                        it
-                    }
-                },
-                p2pAlertDismissed = true
-            )
-            onSuccess()
-            return
-        }
-
         uiState = uiState.copy(isLoading = true)
         viewModelScope.launch {
-            val activity = uiState.activities.find { it.id == activityId }
+            val localActivity = uiState.activities.find { it.id == activityId }
+            val isLocalP2p = activityId.startsWith("p2p-local-")
+
+            val activityResult =
+                if (isLocalP2p) {
+                    val activity = localActivity
+                        ?: run {
+                            uiState = uiState.copy(isLoading = false)
+                            return@launch
+                        }
+                    repository.createP2pActivity(activity)
+                } else {
+                    Result.success(localActivity)
+                }
+
+            activityResult.onFailure {
+                uiState = uiState.copy(isLoading = false)
+                return@launch
+            }
+
+            val activity = activityResult.getOrNull()
+            val persistedActivityId = activity?.id ?: activityId
             val myUid = FirebaseAuth.getInstance().currentUser?.uid
 
             val textToSave = if (activity != null && myUid != null && text.isNotBlank()) {
@@ -100,7 +104,7 @@ class ActivitiesViewModel(
 
             val result = repository.saveActivityResponse(
                 context = getApplication(),
-                activityId = activityId,
+                activityId = persistedActivityId,
                 groupId = activity?.groupId ?: "",
                 text = textToSave,
                 photoPath = photoPath,
@@ -108,15 +112,17 @@ class ActivitiesViewModel(
                 audioPath = audioPath,
                 location = location
             )
-            uiState = uiState.copy(isLoading = false)
-            result.onSuccess {
-                // Locally update status for immediate feedback
+
+            if (result.isSuccess) {
+                val refreshedActivities = repository.getActivities()
                 uiState = uiState.copy(
-                    activities = uiState.activities.map {
-                        if (it.id == activityId) it.copy(status = ActivityStatus.COMPLETED) else it
-                    }
+                    isLoading = false,
+                    activities = refreshedActivities,
+                    p2pAlertDismissed = if (isLocalP2p) true else uiState.p2pAlertDismissed
                 )
                 onSuccess()
+            } else {
+                uiState = uiState.copy(isLoading = false)
             }
         }
     }
@@ -124,26 +130,6 @@ class ActivitiesViewModel(
     fun startNearby(userName: String) {
         nearbyManager.startAdvertising(userName)
         nearbyManager.startDiscovery()
-    }
-
-    fun simulateP2pConnection() {
-        val activity = ActivityItem(
-            id = "p2p-local-simulated",
-            groupId = "test-group",
-            groupName = "Melbourne Uni Squad",
-            title = "What are you doing together right now?",
-            description = "test_user is nearby. Capture this moment with text, photo, audio, or video.",
-            type = ActivityType.P2P_ALERT,
-            status = ActivityStatus.PENDING,
-            dueLabel = "Created just now · Nearby"
-        )
-
-        uiState = uiState.copy(
-            activities = listOf(activity) +
-                    uiState.activities.filterNot { it.id == activity.id },
-            p2pAlert = activity,
-            p2pAlertDismissed = false
-        )
     }
 
     private fun observeNearbyMembers() {
