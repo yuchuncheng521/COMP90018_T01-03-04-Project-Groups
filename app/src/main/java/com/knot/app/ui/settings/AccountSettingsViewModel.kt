@@ -24,7 +24,7 @@ data class AccountSettingsUiState(
         email = ""
     ),
     val notificationsEnabled: Boolean = true,
-    val weeklyPromptRemindersEnabled: Boolean = false,
+    val weeklyPromptRemindersEnabled: Boolean = true,
     val p2pAlertsEnabled: Boolean = false,
     val shareLocationWithMemories: Boolean = true,
     val isLoading: Boolean = false,
@@ -62,8 +62,6 @@ class AccountSettingsViewModel(
                 ),
             notificationsEnabled =
                 NotificationPreferences.isPushEnabled(application),
-            weeklyPromptRemindersEnabled =
-                NotificationPreferences.areWeeklyPromptRemindersEnabled(application),
             shareLocationWithMemories =
                 LocationPreferences.isAttachLocationEnabled(application)
         )
@@ -114,11 +112,6 @@ class AccountSettingsViewModel(
     }
 
     fun setWeeklyPromptReminders(enabled: Boolean) {
-        NotificationPreferences.setWeeklyPromptRemindersEnabled(
-            getApplication(),
-            enabled
-        )
-
         uiState = uiState.copy(
             weeklyPromptRemindersEnabled = enabled
         )

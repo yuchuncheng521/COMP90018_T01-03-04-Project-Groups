@@ -4,8 +4,5 @@
     "location": "australia-southeast2",
     "rules": "app/firestore.rules",
     "indexes": "firestore.indexes.json"
-  },
-  "functions": {
-    "source": "functions"
   }
 }

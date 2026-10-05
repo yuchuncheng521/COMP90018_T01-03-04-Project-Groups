@@ -99,9 +99,6 @@ class ActivitiesRepository(
     ): Result<Unit> = runCatching {
         if (memberIds.isEmpty()) error("This group has no members to assign the activity to.")
 
-        val creatorUid = auth.currentUser?.uid
-            ?: error("You need to be signed in to create an activity.")
-
         val batch = firestore.batch()
         memberIds.forEach { memberId ->
             val docRef = firestore.collection("activities").document()
@@ -115,9 +112,7 @@ class ActivitiesRepository(
                     "type" to ActivityType.WEEKLY_PROMPT.name,
                     "status" to ActivityStatus.PENDING.name,
                     "dueLabel" to "New",
-                    "assignedTo" to memberId,
-                    "createdBy" to creatorUid,
-                    "createdAt" to FieldValue.serverTimestamp()
+                    "assignedTo" to memberId
                 )
             )
         }
