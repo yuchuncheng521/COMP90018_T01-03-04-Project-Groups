@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -38,7 +39,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +57,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.rememberAsyncImagePainter
+import com.knot.app.ui.theme.KnotCream
+import com.knot.app.ui.theme.KnotDarkBrown
+import com.knot.app.ui.theme.KnotInk
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -87,10 +90,14 @@ fun CameraScreen(
     var recording by remember { mutableStateOf<Recording?>(null) }
 
     if (capturedPhotoPath != null) {
+        // Solid background is load-bearing, not decorative: without it, this Box is
+        // fully transparent, so the real screen underneath (ActivityDetailScreen's
+        // Scaffold, CANCEL/DONE included) shows through AND can receive taps that
+        // land on the empty parts of this overlay.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(KnotCream)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -115,9 +122,9 @@ fun CameraScreen(
                         onClick = { capturedPhotoPath = null },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground)
+                        border = BorderStroke(1.dp, KnotInk)
                     ) {
-                        Text("Retake", color = MaterialTheme.colorScheme.onBackground)
+                        Text("Retake", color = KnotInk)
                     }
                     Button(
                         onClick = {
@@ -125,9 +132,9 @@ fun CameraScreen(
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
                     ) {
-                        Text("Use Photo", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("Use Photo", color = KnotCream)
                     }
                 }
             }
@@ -150,7 +157,7 @@ fun CameraScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(KnotCream)
         ) {
             Column(
                 modifier = Modifier
@@ -159,7 +166,7 @@ fun CameraScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text("Video recorded successfully", color = MaterialTheme.colorScheme.onBackground)
+                Text("Video recorded successfully", color = KnotInk)
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -171,9 +178,9 @@ fun CameraScreen(
                         onClick = { capturedVideoPath = null },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground)
+                        border = BorderStroke(1.dp, KnotInk)
                     ) {
-                        Text("Retake Video", color = MaterialTheme.colorScheme.onBackground)
+                        Text("Retake Video", color = KnotInk)
                     }
                     Button(
                         onClick = {
@@ -181,9 +188,9 @@ fun CameraScreen(
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
                     ) {
-                        Text("Use Video", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("Use Video", color = KnotCream)
                     }
                 }
             }

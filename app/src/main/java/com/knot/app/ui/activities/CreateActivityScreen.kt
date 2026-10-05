@@ -15,18 +15,39 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knot.app.R
+import com.knot.app.model.Group
+import com.knot.app.ui.theme.KnotDarkBrown
+import com.knot.app.ui.theme.KnotCream
+import com.knot.app.ui.theme.KnotInk
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateActivityScreen(
+    viewModel: CreateActivityViewModel,
     onBackClick: () -> Unit,
 ) {
-    var selectedGroup by remember { mutableStateOf("Select Group") }
+    val uiState = viewModel.uiState
+
+    var selectedGroup by remember { mutableStateOf<Group?>(null) }
     var expanded by remember { mutableStateOf(value = false) }
-    val groups = listOf("The Reyes-Cheng Family", "Melbourne Uni Squad", "Sarah & Qin Yu")
 
     var activityTitle by remember { mutableStateOf("") }
     var activityDescription by remember { mutableStateOf("") }
+
+    // Default to the first loaded group once groups come in, so the picker
+    // isn't left on "Select Group" when there's really only one to choose.
+    LaunchedEffect(uiState.groups) {
+        if (selectedGroup == null) {
+            selectedGroup = uiState.groups.firstOrNull()
+        }
+    }
+
+    // Once the activity is created, hand control back to whoever pushed this screen.
+    LaunchedEffect(uiState.created) {
+        if (uiState.created) {
+            onBackClick()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -70,8 +91,8 @@ fun CreateActivityScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-                        .clickable { expanded = true }
+                        .background(KnotDarkBrown.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                        .clickable(enabled = uiState.groups.isNotEmpty()) { expanded = true }
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -80,8 +101,15 @@ fun CreateActivityScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(text = selectedGroup, color = MaterialTheme.colorScheme.onPrimary)
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                        Text(
+                            text = when {
+                                uiState.isLoadingGroups -> "Loading groups…"
+                                uiState.groups.isEmpty() -> "No groups yet"
+                                else -> selectedGroup?.name ?: "Select Group"
+                            },
+                            color = Color.White
+                        )
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.White)
                     }
                 }
                 DropdownMenu(
@@ -89,9 +117,9 @@ fun CreateActivityScreen(
                     onDismissRequest = { expanded = false },
                     modifier = Modifier.fillMaxWidth(0.8f)
                 ) {
-                    groups.forEach { group ->
+                    uiState.groups.forEach { group ->
                         DropdownMenuItem(
-                            text = { Text(group) },
+                            text = { Text(group.name) },
                             onClick = {
                                 selectedGroup = group
                                 expanded = false
@@ -109,9 +137,8 @@ fun CreateActivityScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                    unfocusedContainerColor = KnotCream,
+                    focusedContainerColor = KnotCream
                 )
             )
 
@@ -122,11 +149,18 @@ fun CreateActivityScreen(
                 modifier = Modifier.fillMaxWidth().height(120.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                    unfocusedContainerColor = KnotCream,
+                    focusedContainerColor = KnotCream
                 )
             )
+
+            if (uiState.errorMessage != null) {
+                Text(
+                    text = uiState.errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -139,20 +173,20 @@ fun CreateActivityScreen(
                     onClick = onBackClick,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, KnotInk)
                 ) {
-                    Text("CANCEL", color = MaterialTheme.colorScheme.onSurface)
+                    Text("CANCEL", color = KnotInk)
                 }
                 Button(
-                    onClick = { /* Stub */ onBackClick() },
+                    onClick = {
+                        viewModel.createActivity(selectedGroup, activityTitle, activityDescription)
+                    },
+                    enabled = !uiState.isSubmitting,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
                 ) {
-                    Text("CREATE")
+                    Text(if (uiState.isSubmitting) "CREATING…" else "CREATE", color = Color.White)
                 }
             }
         }

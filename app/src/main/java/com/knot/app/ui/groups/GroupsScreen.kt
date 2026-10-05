@@ -2,6 +2,7 @@ package com.knot.app.ui.groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,22 +16,43 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +60,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.model.Group
+import com.knot.app.ui.theme.KnotCream
+import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotTheme
+
 
 @Preview(showBackground = true)
 @Composable
@@ -52,94 +77,140 @@ private fun LoadingStatePreview() {
 @Composable
 private fun EmptyGroupsStatePreview() {
     KnotTheme {
-        EmptyGroupsState(padding = PaddingValues())
+        EmptyGroupsState(padding = PaddingValues(), onJoinClick = {})
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-private fun GroupsListPreview() {
-    KnotTheme {
-        GroupsList(
-            padding = PaddingValues(),
-            groups = listOf(
-                Group(
-                    id = "1",
-                    name = "The Family",
-                    memberCount = 5,
-                    lastActivitySummary = "Sarah posted 2 photos",
-                    unreadCount = 3
-                ),
-                Group(
-                    id = "2",
-                    name = "Uni Friends",
-                    memberCount = 8,
-                    lastActivitySummary = "",
-                    unreadCount = 0
-                )
-            ),
-            onGroupClick = {}
-        )
-    }
-}
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupsScreen(
     viewModel: GroupsViewModel,
-    onGroupClick: (Group) -> Unit = {},
-    onCreateGroupClick: () -> Unit = {}
+    onGroupClick: (Group) -> Unit = {}
 ) {
     val uiState = viewModel.uiState
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = { TopAppBar(title = {
-                Text("Groups",
-                fontSize = 38.sp
+    var pendingLeaveGroup by remember { mutableStateOf<Group?>(null) }
+    var pendingDeleteGroup by remember { mutableStateOf<Group?>(null) }
+    var pendingRemoveMember by remember { mutableStateOf<Triple<Group, String, String>?>(null) }
+    var pendingInviteCodeGroup by remember { mutableStateOf<Group?>(null) }
 
-                ) },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background
+    LaunchedEffect(Unit) {
+        viewModel.loadGroups()
+    }
+
+    Scaffold(
+        containerColor = KnotCream,
+        topBar = {
+            TopAppBar(
+                title = { Text("Groups", fontSize = 38.sp) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = KnotCream,
+                    scrolledContainerColor = KnotCream
                 )
             )
-                 },
+        },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             Button(
-                onClick = onCreateGroupClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+                onClick = { viewModel.openJoinOrCreateSheet(JoinOrCreateMode.CREATE) },
+                colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown, contentColor = KnotCream),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                modifier = Modifier
-                    .width(360.dp)
-                    .padding(horizontal = 24.dp)
-                    .height(52.dp)
+                modifier = Modifier.width(360.dp).padding(horizontal = 24.dp).height(52.dp)
             ) {
-                Text("New group",style = MaterialTheme.typography.titleMedium)
+                Text("New group", style = MaterialTheme.typography.titleMedium)
             }
         }
-    )
-
-
-    { padding ->
+    ) { padding ->
         when {
             uiState.isLoading -> LoadingState(padding)
-            uiState.groups.isEmpty() -> EmptyGroupsState(padding)
-            else -> GroupsList(padding, uiState.groups, onGroupClick)
+            uiState.groups.isEmpty() -> EmptyGroupsState(
+                padding = padding,
+                onJoinClick = { viewModel.openJoinOrCreateSheet(JoinOrCreateMode.JOIN) }
+            )
+            else -> GroupsList(
+                padding = padding,
+                groups = uiState.groups,
+                memberAvatarInfo = uiState.memberAvatarInfo,
+                currentUserId = viewModel.currentUserId,
+                onGroupClick = onGroupClick,
+                onLeaveGroup = { group -> pendingLeaveGroup = group },
+                onDeleteGroup = { group -> pendingDeleteGroup = group },
+                onRemoveMember = { group, memberId, memberName ->
+                    pendingRemoveMember = Triple(group, memberId, memberName)
+                },
+                onShowInviteCode = { group -> pendingInviteCodeGroup = group }
+            )
         }
+    }
+
+    if (uiState.isJoinOrCreateSheetOpen) {
+        JoinOrCreateDialog(
+            mode = uiState.joinOrCreateMode,
+            isSubmitting = uiState.isSubmittingJoinOrCreate,
+            errorMessage = uiState.joinOrCreateError,
+            onModeChange = { viewModel.openJoinOrCreateSheet(it) },
+            onDismiss = { viewModel.dismissJoinOrCreateSheet() },
+            onCreate = { name -> viewModel.createGroup(name) },
+            onJoin = { code -> viewModel.joinGroup(code) }
+        )
+    }
+
+    uiState.justCreatedGroup?.let { group ->
+        InviteCodeDialog(group = group, onDismiss = { viewModel.dismissJustCreatedBanner() })
+    }
+
+    uiState.actionError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissActionError() },
+            title = { Text("Something went wrong") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissActionError() }) { Text("OK") }
+            }
+        )
+    }
+
+    pendingLeaveGroup?.let { group ->
+        ConfirmActionDialog(
+            title = "Leave \"${group.name}\"?",
+            message = "You'll need a new invite code to rejoin this group later.",
+            confirmLabel = "Leave",
+            onConfirm = { viewModel.leaveGroup(group.id); pendingLeaveGroup = null },
+            onDismiss = { pendingLeaveGroup = null }
+        )
+    }
+
+    pendingDeleteGroup?.let { group ->
+        ConfirmActionDialog(
+            title = "Delete \"${group.name}\"?",
+            message = "This removes the group for everyone. This can't be undone.",
+            confirmLabel = "Delete",
+            onConfirm = { viewModel.deleteGroup(group.id); pendingDeleteGroup = null },
+            onDismiss = { pendingDeleteGroup = null }
+        )
+    }
+
+    pendingRemoveMember?.let { (group, memberId, memberName) ->
+        ConfirmActionDialog(
+            title = "Remove $memberName?",
+            message = "They'll lose access to \"${group.name}\" and its memories.",
+            confirmLabel = "Remove",
+            onConfirm = { viewModel.removeMember(group.id, memberId); pendingRemoveMember = null },
+            onDismiss = { pendingRemoveMember = null }
+        )
+    }
+
+    pendingInviteCodeGroup?.let { group ->
+        InviteCodeDialog(
+            group = group,
+            onDismiss = { pendingInviteCodeGroup = null }
+        )
     }
 }
 
 @Composable
 private fun LoadingState(padding: PaddingValues) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding),
+        modifier = Modifier.fillMaxSize().padding(padding),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator()
@@ -147,22 +218,13 @@ private fun LoadingState(padding: PaddingValues) {
 }
 
 @Composable
-private fun EmptyGroupsState(padding: PaddingValues) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-    ) {
-
+private fun EmptyGroupsState(padding: PaddingValues, onJoinClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f)
-                .padding(32.dp, vertical =200.dp),
+            modifier = Modifier.fillMaxSize().weight(1f).padding(32.dp, vertical = 200.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
             Icon(
                 imageVector = Icons.Filled.Groups,
                 contentDescription = null,
@@ -174,7 +236,9 @@ private fun EmptyGroupsState(padding: PaddingValues) {
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(top = 16.dp)
             )
-
+            TextButton(onClick = onJoinClick, modifier = Modifier.padding(top = 8.dp)) {
+                Text("Join with a code")
+            }
         }
     }
 }
@@ -183,70 +247,423 @@ private fun EmptyGroupsState(padding: PaddingValues) {
 private fun GroupsList(
     padding: PaddingValues,
     groups: List<Group>,
-    onGroupClick: (Group) -> Unit
+    memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo>,
+    currentUserId: String,
+    onGroupClick: (Group) -> Unit,
+    onLeaveGroup: (Group) -> Unit,
+    onDeleteGroup: (Group) -> Unit,
+    onRemoveMember: (Group, String, String) -> Unit,
+    onShowInviteCode: (Group) -> Unit
 ) {
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            items(groups, key = { it.id }) { group ->
-                GroupCard(group = group, onClick = { onGroupClick(group) })
-            }
+    LazyColumn(
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize().padding(padding)
+    ) {
+        items(groups, key = { it.id }) { group ->
+            GroupCard(
+                group = group,
+                memberAvatarInfo = memberAvatarInfo,
+                currentUserId = currentUserId,
+                onClick = { onGroupClick(group) },
+                onLeaveGroup = { onLeaveGroup(group) },
+                onDeleteGroup = { onDeleteGroup(group) },
+                onRemoveMember = { memberId, memberName -> onRemoveMember(group, memberId, memberName) },
+                onShowInviteCode = { onShowInviteCode(group) }
+            )
         }
     }
+}
 
 @Composable
-private fun GroupCard(group: Group, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+private fun GroupCard(
+    group: Group,
+    memberAvatarInfo: Map<String, com.knot.app.data.MemberAvatarInfo>,
+    currentUserId: String,
+    onClick: () -> Unit,
+    onLeaveGroup: () -> Unit,
+    onDeleteGroup: () -> Unit,
+    onRemoveMember: (memberId: String, memberName: String) -> Unit,
+    onShowInviteCode: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showRemoveMemberPicker by remember { mutableStateOf(false) }
+    val isOwner = currentUserId == group.ownerId
+
+    Box {
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Text(
-                text = group.name,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Text(
-                text = "${group.memberCount} Members",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(top = 12.dp)
-            )
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(top = 12.dp)
-            ) {
-                items(group.memberCount) {
-                    MemberAvatarPlaceholder()
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = "${group.memberCount} Members",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(top = 12.dp)
+                ) {
+                    if (group.memberIds.isNotEmpty()) {
+                        items(group.memberIds) { memberId ->
+                            val info = memberAvatarInfo[memberId]
+                            if (info != null) {
+                                ColoredMemberAvatar(
+                                    initial = info.displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                                    colorHex = info.avatarColor
+                                )
+                            } else {
+                                MemberAvatarPlaceholder()
+                            }
+                        }
+                    } else {
+                        items(group.memberCount) {
+                            MemberAvatarPlaceholder()
+                        }
+                    }
                 }
             }
         }
+
+        IconButton(
+            onClick = { showMenu = true },
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = "Group options",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
+        }
+
+        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            if (isOwner) {
+                DropdownMenuItem(
+                    text = { Text("Invite code") },
+                    onClick = { showMenu = false; onShowInviteCode()}
+                )
+                DropdownMenuItem(
+                    text = { Text("Remove a member") },
+                    onClick = { showMenu = false; showRemoveMemberPicker = true }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete group") },
+                    onClick = { showMenu = false; onDeleteGroup() }
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text("Leave group") },
+                    onClick = { showMenu = false; onLeaveGroup() }
+                )
+            }
+        }
     }
+
+    if (showRemoveMemberPicker) {
+        RemoveMemberDialog(
+            group = group,
+            onDismiss = { showRemoveMemberPicker = false },
+            onConfirmRemove = { memberId, memberName ->
+                showRemoveMemberPicker = false
+                onRemoveMember(memberId, memberName)
+            }
+        )
+    }
+}
+
+@Composable
+private fun RemoveMemberDialog(
+    group: Group,
+    onDismiss: () -> Unit,
+    onConfirmRemove: (memberId: String, memberName: String) -> Unit
+) {
+    val viewModel: GroupsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val names = viewModel.uiState.memberNames
+
+    LaunchedEffect(group.id) {
+        viewModel.loadMemberNames(group.memberIds)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Remove a member") },
+        text = {
+            Column {
+                val removableMembers = group.memberIds.filter { it != group.ownerId }
+
+                if (removableMembers.isEmpty()) {
+                    Text("No other members to remove yet.")
+                } else {
+                    removableMembers.forEach { memberId ->
+                        val displayName = names[memberId] ?: "Member"
+
+                        TextButton(
+                            onClick = {
+                                onConfirmRemove(memberId, displayName)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Text(
+                                    text = displayName,
+                                    modifier = Modifier.padding(start = 12.dp),
+                                    textAlign = TextAlign.Start
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ConfirmActionDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(confirmLabel) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
 private fun MemberAvatarPlaceholder() {
     Box(
-        modifier = Modifier
-            .size(56.dp)
-            .background(
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-                CircleShape
-            )
+        modifier = Modifier.size(56.dp).background(
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+            CircleShape
+        )
     )
-
 }
 
+@Composable
+private fun ColoredMemberAvatar(initial: String, colorHex: String) {
+    Box(
+        modifier = Modifier.size(56.dp).background(
+            Color(android.graphics.Color.parseColor(colorHex)),
+            CircleShape
+        ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = initial, color = Color.White, fontWeight = FontWeight.Bold)
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun JoinOrCreateDialog(
+    mode: JoinOrCreateMode,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    onModeChange: (JoinOrCreateMode) -> Unit,
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit,
+    onJoin: (String) -> Unit
+) {
+    var text by remember(mode) { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (mode == JoinOrCreateMode.CREATE) "Create a group" else "Join a group") },
+        text = {
+            Column {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = mode == JoinOrCreateMode.CREATE,
+                        onClick = { onModeChange(JoinOrCreateMode.CREATE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                    ) { Text("Create") }
+                    SegmentedButton(
+                        selected = mode == JoinOrCreateMode.JOIN,
+                        onClick = { onModeChange(JoinOrCreateMode.JOIN) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                    ) { Text("Join") }
+                }
+
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text(if (mode == JoinOrCreateMode.CREATE) "Group name" else "Invite code") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                )
+
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !isSubmitting,
+                onClick = { if (mode == JoinOrCreateMode.CREATE) onCreate(text) else onJoin(text) }
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Text(if (mode == JoinOrCreateMode.CREATE) "Create" else "Join")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun InviteCodeDialog(
+    group: Group,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var copied by remember { mutableStateOf(false) }
+
+    val shareText = """
+        Join my Knot group "${group.name}"!
+        
+        Use this invite code to join:
+        ${group.inviteCode}
+    """.trimIndent()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("\"${group.name}\" invite code")
+        },
+        text = {
+            Column {
+                Text(
+                    "Share this invite code with the people you want in this circle:"
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = group.inviteCode,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+
+                    IconButton(
+                        onClick = {
+                            val clipboard =
+                                context.getSystemService(
+                                    android.content.ClipboardManager::class.java
+                                )
+
+                            clipboard?.setPrimaryClip(
+                                android.content.ClipData.newPlainText(
+                                    "Invite code",
+                                    group.inviteCode
+                                )
+                            )
+
+                            copied = true
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ContentCopy,
+                            contentDescription = "Copy invite code"
+                        )
+                    }
+                }
+
+                if (copied) {
+                    Text(
+                        text = "Copied!",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                TextButton(
+                    onClick = {
+                        val shareIntent = android.content.Intent(
+                            android.content.Intent.ACTION_SEND
+                        ).apply {
+                            type = "text/plain"
+                            putExtra(
+                                android.content.Intent.EXTRA_TEXT,
+                                shareText
+                            )
+                        }
+
+                        context.startActivity(
+                            android.content.Intent.createChooser(
+                                shareIntent,
+                                "Share invite"
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = null
+                    )
+
+                    Text(
+                        text = "Share invite",
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        }
+    )
+}

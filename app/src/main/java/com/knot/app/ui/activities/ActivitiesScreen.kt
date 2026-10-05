@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -241,8 +242,8 @@ fun ActivitiesScreen(
                         onClick = { /* Already on Quests/Activities */ },
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                            containerColor = KnotDarkBrown,
+                            contentColor = KnotCream
                         ),
                         shape = RoundedCornerShape(24.dp)
                     ) {
@@ -252,10 +253,10 @@ fun ActivitiesScreen(
                         onClick = onCreateClick,
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
+                            contentColor = KnotDarkBrown
                         ),
                         shape = RoundedCornerShape(24.dp),
-                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                        border = androidx.compose.foundation.BorderStroke(2.dp, KnotDarkBrown)
                     ) {
                         Text("CREATE", fontWeight = FontWeight.Bold)
                     }
@@ -313,6 +314,11 @@ fun ActivitiesScreen(
                         activity = activity,
                         onClick = {
                             onActivityClick(activity)
+                        },
+                        onToggleComplete = {
+                            viewModel.markCompleted(
+                                activity.id
+                            )
                         }
                     )
                 }
@@ -337,6 +343,7 @@ fun ActivitiesScreen(
 private fun ActivityCard(
     activity: ActivityItem,
     onClick: () -> Unit,
+    onToggleComplete: () -> Unit,
 ) {
     val isCompleted =
         activity.status == ActivityStatus.COMPLETED
@@ -359,14 +366,28 @@ private fun ActivityCard(
                 Alignment.CenterVertically
         ) {
 
-            if (isCompleted) {
+            IconButton(
+                onClick = onToggleComplete
+            ) {
                 Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Completed",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(24.dp)
+                    imageVector =
+                        if (isCompleted) {
+                            Icons.Filled.CheckCircle
+                        } else {
+                            Icons.Filled.RadioButtonUnchecked
+                        },
+                    contentDescription =
+                        if (isCompleted) {
+                            "Completed"
+                        } else {
+                            "Mark as complete"
+                        },
+                    tint =
+                        if (isCompleted) {
+                            MaterialTheme.colorScheme.secondary
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        }
                 )
             }
 

@@ -4,6 +4,5 @@ data class NearbyMember(
     val endpointId: String,
     val endpointName: String,
     val userId: String? = null,
-    val sharedGroupId: String? = null,
-    val sharedGroupIds: List<String> = emptyList()
+    val sharedGroupId: String? = null
 )

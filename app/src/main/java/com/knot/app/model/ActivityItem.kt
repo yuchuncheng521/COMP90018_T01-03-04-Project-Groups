@@ -26,7 +26,5 @@ data class ActivityItem(
     val description: String = "",
     val type: ActivityType = ActivityType.WEEKLY_PROMPT,
     val status: ActivityStatus = ActivityStatus.PENDING,
-    val dueLabel: String = "", // e.g. "Due in 3 days" -- kept as a display string for this base build
-    val sharedGroupIds: List<String> = emptyList(),
-    val createdAt: Long = System.currentTimeMillis()
+    val dueLabel: String = "" // e.g. "Due in 3 days" -- kept as a display string for this base build
 )
