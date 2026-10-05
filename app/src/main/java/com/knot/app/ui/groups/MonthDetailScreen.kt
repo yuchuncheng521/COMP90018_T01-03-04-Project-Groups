@@ -19,11 +19,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -42,6 +48,11 @@ import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
 import com.knot.app.model.MemoryType
+import android.media.MediaPlayer
+import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
+import androidx.compose.ui.viewinterop.AndroidView
 
 
 @Preview(showBackground = true)
@@ -213,18 +224,14 @@ fun MonthDetailScreen(
                                 }
 
                                 MemoryType.AUDIO -> {
-                                    Text(
-                                        text = "Audio response",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                    AudioResponsePlayer(
+                                        audioUrl = memory.contentUrl
                                     )
                                 }
 
                                 MemoryType.VIDEO -> {
-                                    Text(
-                                        text = "Video response",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                    VideoResponsePlayer(
+                                        videoUrl = memory.contentUrl
                                     )
                                 }
                             }
@@ -234,6 +241,73 @@ fun MonthDetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun AudioResponsePlayer(audioUrl: String) {
+    val mediaPlayer = remember(audioUrl) {
+        MediaPlayer().apply {
+            setDataSource(audioUrl)
+            prepareAsync()
+        }
+    }
+
+    var isPlaying by remember { mutableStateOf(false) }
+    var isPrepared by remember { mutableStateOf(false) }
+
+    DisposableEffect(mediaPlayer) {
+        mediaPlayer.setOnPreparedListener {
+            isPrepared = true
+        }
+
+        mediaPlayer.setOnCompletionListener {
+            isPlaying = false
+        }
+
+        onDispose {
+            mediaPlayer.release()
+        }
+    }
+
+    Button(
+        onClick = {
+            if (!isPrepared) return@Button
+
+            if (isPlaying) {
+                mediaPlayer.pause()
+                isPlaying = false
+            } else {
+                mediaPlayer.start()
+                isPlaying = true
+            }
+        }
+    ) {
+        Text(
+            if (isPlaying) {
+                "Pause Audio"
+            } else {
+                "Play Audio"
+            }
+        )
+    }
+}
+
+@Composable
+private fun VideoResponsePlayer(videoUrl: String) {
+    AndroidView(
+        factory = { context ->
+            VideoView(context).apply {
+                val mediaController = MediaController(context)
+                mediaController.setAnchorView(this)
+
+                setMediaController(mediaController)
+                setVideoURI(Uri.parse(videoUrl))
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+    )
 }
 
 

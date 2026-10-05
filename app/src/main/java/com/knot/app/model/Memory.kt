@@ -26,5 +26,6 @@ data class Memory(
     val textContent: String = "",      // written text, or transcription if audio
     val locationLat: Double? = null,
     val locationLng: Double? = null,
+    val locationText: String = "",
     val createdAt: Long = 0L           // epoch millis -- week/month grouping is derived from this
 )

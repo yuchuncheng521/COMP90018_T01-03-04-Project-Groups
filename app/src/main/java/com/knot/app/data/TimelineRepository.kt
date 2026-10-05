@@ -98,6 +98,8 @@ import kotlinx.coroutines.coroutineScope
                     ?.time
                     ?: return@forEach
 
+                val locationText = response.getString("location").orEmpty()
+
                 // TEXT
                 val textCiphertext = response.getString("text").orEmpty()
 
