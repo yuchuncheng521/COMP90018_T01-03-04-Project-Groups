@@ -32,9 +32,6 @@ import com.knot.app.ui.settings.AccountSettingsViewModel
 import com.knot.app.ui.settings.AppPreferencesScreen
 import com.knot.app.ui.settings.DeleteAccountScreen
 import com.knot.app.ui.settings.EditProfileScreen
-import com.knot.app.ui.timeline.TimelineScreen
-import com.knot.app.ui.timeline.TimelineViewModel
-import com.knot.app.ui.groups.GroupDetailViewModel
 
 
 @Composable
@@ -149,24 +146,6 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                             "monthDetail/${groupId}/${album.year}/${album.month}"
                         )
                     }
-                )
-            }
-
-            // ---- Shared timeline (chronological feed) for one group ----
-            composable(
-                route = TimelineScreenRoute.ROUTE_PATTERN,
-                arguments = listOf(
-                    navArgument("groupId") { type = NavType.StringType },
-                    navArgument("groupName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val timelineViewModel: TimelineViewModel = viewModel()
-
-                TimelineScreen(
-                    groupId = backStackEntry.arguments?.getString("groupId").orEmpty(),
-                    groupName = backStackEntry.arguments?.getString("groupName").orEmpty(),
-                    viewModel = timelineViewModel,
-                    onBackClick = { mainNavController.popBackStack() }
                 )
             }
 

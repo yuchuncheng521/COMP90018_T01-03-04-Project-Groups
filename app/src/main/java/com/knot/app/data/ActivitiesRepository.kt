@@ -100,12 +100,15 @@ class ActivitiesRepository(
         if (memberIds.isEmpty()) error("This group has no members to assign the activity to.")
 
         val batch = firestore.batch()
+        val sharedActivityId = UUID.randomUUID().toString()
         memberIds.forEach { memberId ->
             val docRef = firestore.collection("activities").document()
             batch.set(
                 docRef,
                 mapOf(
                     "groupId" to groupId,
+                    "sharedActivityId" to sharedActivityId,
+                    "createdAt" to FieldValue.serverTimestamp(),
                     "groupName" to groupName,
                     "title" to title,
                     "description" to description,

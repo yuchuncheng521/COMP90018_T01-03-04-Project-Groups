@@ -53,6 +53,9 @@ import android.net.Uri
 import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.ui.viewinterop.AndroidView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @Preview(showBackground = true)
@@ -86,7 +89,7 @@ fun MonthDetailScreen(
         )
     }
 
-    val currentWeek = uiState.currentWeek
+    val currentActivity = uiState.currentActivity
 
     Scaffold(
         containerColor = KnotCream,
@@ -129,28 +132,36 @@ fun MonthDetailScreen(
                     .padding(vertical = 8.dp)
             ) {
                 IconButton(
-                    onClick = { viewModel.goToPreviousWeek() },
-                    enabled = uiState.currentWeekIndex > 0
+                    onClick = { viewModel.goToPreviousActivity() },
+                    enabled = uiState.currentActivityIndex > 0
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "Previous week",
+                        contentDescription = "Previous activity",
                         tint = KnotDarkBrown
                     )
                 }
+
                 Text(
-                    text = currentWeek?.weekLabel ?: "No responses yet",
+                    text = currentActivity?.let {
+                        SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
+                            .format(Date(it.dateMillis))
+                    } ?: "No activities yet",
                     style = MaterialTheme.typography.bodyLarge,
                     color = KnotDarkBrown,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
                 )
+
                 IconButton(
-                    onClick = { viewModel.goToNextWeek() },
-                    enabled = uiState.currentWeekIndex < uiState.weeks.lastIndex
+                    onClick = { viewModel.goToNextActivity() },
+                    enabled = uiState.currentActivityIndex < uiState.activities.lastIndex
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Next week",
+                        contentDescription = "Next activity",
                         tint = KnotDarkBrown
                     )
                 }
@@ -165,7 +176,7 @@ fun MonthDetailScreen(
                     .padding(24.dp)
             ) {
                 Text(
-                    text = "\u201c${currentWeek?.questionText ?: "No prompt answered this week"}\u201d",
+                    text = "\u201c${currentActivity?.activityTitle ?: "No activity yet"}\u201d",
                     style = MaterialTheme.typography.titleMedium,
                     color = KnotDarkBrown,
                     textAlign = TextAlign.Center,
@@ -181,7 +192,7 @@ fun MonthDetailScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                items(currentWeek?.memories ?: emptyList()) { memory ->
+                items(currentActivity?.memories ?: emptyList()) { memory ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -235,6 +246,17 @@ fun MonthDetailScreen(
                                     )
                                 }
                             }
+
+                            if (memory.locationText.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+
+                                Text(
+                                    text = "📍 ${memory.locationText}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = KnotDarkBrown
+                                )
+                            }
+
                         }
                     }
                 }
