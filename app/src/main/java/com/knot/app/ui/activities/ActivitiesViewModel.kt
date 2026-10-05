@@ -61,21 +61,6 @@ class ActivitiesViewModel(
         )
     }
 
-    fun markCompleted(activityId: String) {
-        uiState = uiState.copy(
-            activities = uiState.activities.map {
-                if (it.id == activityId) {
-                    it.copy(status = ActivityStatus.COMPLETED)
-                } else {
-                    it
-                }
-            }
-        )
-        viewModelScope.launch {
-            repository.updateActivityStatus(activityId, ActivityStatus.COMPLETED)
-        }
-    }
-
     fun submitActivityResponse(
         activityId: String,
         text: String,

@@ -25,7 +25,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -314,11 +313,6 @@ fun ActivitiesScreen(
                         activity = activity,
                         onClick = {
                             onActivityClick(activity)
-                        },
-                        onToggleComplete = {
-                            viewModel.markCompleted(
-                                activity.id
-                            )
                         }
                     )
                 }
@@ -343,7 +337,6 @@ fun ActivitiesScreen(
 private fun ActivityCard(
     activity: ActivityItem,
     onClick: () -> Unit,
-    onToggleComplete: () -> Unit,
 ) {
     val isCompleted =
         activity.status == ActivityStatus.COMPLETED
@@ -366,30 +359,27 @@ private fun ActivityCard(
                 Alignment.CenterVertically
         ) {
 
-            IconButton(
-                onClick = onToggleComplete
-            ) {
-                Icon(
-                    imageVector =
-                        if (isCompleted) {
-                            Icons.Filled.CheckCircle
-                        } else {
-                            Icons.Filled.RadioButtonUnchecked
-                        },
-                    contentDescription =
-                        if (isCompleted) {
-                            "Completed"
-                        } else {
-                            "Mark as complete"
-                        },
-                    tint =
-                        if (isCompleted) {
-                            MaterialTheme.colorScheme.secondary
-                        } else {
-                            MaterialTheme.colorScheme.outline
-                        }
-                )
-            }
+            Icon(
+                imageVector =
+                    if (isCompleted) {
+                        Icons.Filled.CheckCircle
+                    } else {
+                        Icons.Filled.RadioButtonUnchecked
+                    },
+                contentDescription =
+                    if (isCompleted) {
+                        "Completed"
+                    } else {
+                        "Not completed yet"
+                    },
+                tint =
+                    if (isCompleted) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
+                modifier = Modifier.size(24.dp)
+            )
 
             Column(
                 modifier = Modifier

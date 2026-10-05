@@ -134,6 +134,25 @@ class GroupsRepository(
                 .update("groupIds", FieldValue.arrayRemove(groupId))
                 .await()
         }
+
+        // Activities are fanned out one document per member (assignedTo), so
+        // removing someone from the group doesn't automatically take their
+        // copy away -- without this they'd keep seeing this group's activities
+        // in their own list forever. Both fields are plain equality filters,
+        // so this doesn't need a composite index.
+        runCatching {
+            val leftoverActivities = firestore.collection("activities")
+                .whereEqualTo("groupId", groupId)
+                .whereEqualTo("assignedTo", memberIdToRemove)
+                .get()
+                .await()
+
+            if (!leftoverActivities.isEmpty) {
+                val batch = firestore.batch()
+                leftoverActivities.documents.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+            }
+        }
     }
 
     /** Deletes the whole group. Only the owner can do this. Note: this does NOT
