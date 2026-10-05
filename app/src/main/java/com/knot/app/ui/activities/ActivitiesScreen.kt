@@ -318,16 +318,6 @@ fun ActivitiesScreen(
                 }
             }
 
-            // Simulate a successful verified P2P connection without a second phone.
-            item {
-                Button(
-                    onClick = {
-                        viewModel.simulateP2pConnection()
-                    }
-                ) {
-                    Text("Simulate nearby group member")
-                }
-            }
         }
     }
 }
