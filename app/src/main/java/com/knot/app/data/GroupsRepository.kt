@@ -155,14 +155,31 @@ class GroupsRepository(
         }
     }
 
-    /** Deletes the whole group. Only the owner can do this. Note: this does NOT
-     *  cascade-delete the group's memories/activities -- known MVP limitation. */
+    /** Deletes the whole group. Only the owner can do this. Also deletes the
+     *  group's "activities" documents (see removeMember). Still does NOT
+     *  cascade-delete activity_responses or the unused "memories" collection. */
     suspend fun deleteGroup(groupId: String): Result<Unit> = runCatching {
         val uid = auth.currentUser?.uid ?: error("You need to be signed in to do that.")
         val docRef = firestore.collection("groups").document(groupId)
         val doc = docRef.get().await()
         val ownerId = doc.getString("ownerId") ?: ""
         if (uid != ownerId) error("Only the group owner can delete this group.")
+
+        // Same leftover-data issue as removeMember, but for every member at once:
+        // activities are fanned out one doc per member (assignedTo), so deleting
+        // just the group doc left everyone's activities for it behind.
+        runCatching {
+            val leftoverActivities = firestore.collection("activities")
+                .whereEqualTo("groupId", groupId)
+                .get()
+                .await()
+
+            if (!leftoverActivities.isEmpty) {
+                val batch = firestore.batch()
+                leftoverActivities.documents.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+            }
+        }
 
         docRef.delete().await()
     }
