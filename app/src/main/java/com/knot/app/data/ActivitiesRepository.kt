@@ -50,8 +50,13 @@ class ActivitiesRepository(
                     type = runCatching { ActivityType.valueOf(doc.getString("type") ?: "") }.getOrDefault(ActivityType.WEEKLY_PROMPT),
                     status = runCatching { ActivityStatus.valueOf(doc.getString("status") ?: "") }.getOrDefault(ActivityStatus.PENDING),
                     dueLabel = doc.getString("dueLabel") ?: "",
+                    createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
                 )
-            }
+                // Newest first. Sorted here in Kotlin rather than with a Firestore
+                // .orderBy("createdAt") -- combined with the existing
+                // .whereEqualTo("assignedTo", uid) that would need a new composite
+                // index, and this app doesn't have any defined yet.
+            }.sortedByDescending { it.createdAt }
         }.getOrElse { emptyList() }
     }
 
@@ -112,7 +117,8 @@ class ActivitiesRepository(
                     "type" to ActivityType.WEEKLY_PROMPT.name,
                     "status" to ActivityStatus.PENDING.name,
                     "dueLabel" to "New",
-                    "assignedTo" to memberId
+                    "assignedTo" to memberId,
+                    "createdAt" to FieldValue.serverTimestamp()
                 )
             )
         }
