@@ -15,11 +15,18 @@ import kotlinx.coroutines.launch
 import com.google.firebase.auth.FirebaseAuth
 import com.knot.app.crypto.GroupKeyManager
 
+data class P2pGroupOption(
+    val groupId: String,
+    val groupName: String
+)
+
 data class ActivitiesUiState(
     val isLoading: Boolean = true,
     val activities: List<ActivityItem> = emptyList(),
     val p2pAlert: ActivityItem? = null,
     val p2pAlertDismissed: Boolean = false,
+    val p2pGroupOptions: List<P2pGroupOption> = emptyList(),
+    val p2pPeerName: String = "",
 )
 
 class ActivitiesViewModel(
@@ -45,12 +52,10 @@ class ActivitiesViewModel(
 
         viewModelScope.launch {
             val activities = repository.getActivities()
-            val alert = repository.getP2pAlert()
 
             uiState = uiState.copy(
                 isLoading = false,
-                activities = activities,
-                p2pAlert = alert
+                activities = activities
             )
         }
     }
@@ -127,6 +132,31 @@ class ActivitiesViewModel(
         }
     }
 
+    fun selectP2pGroup(groupId: String): ActivityItem? {
+        val option = uiState.p2pGroupOptions.firstOrNull { it.groupId == groupId }
+            ?: return null
+
+        val peerName = uiState.p2pPeerName.ifBlank { "Group member" }
+        val currentAlert = uiState.p2pAlert ?: return null
+
+        val activity = currentAlert.copy(
+            id = currentAlert.id
+                .takeIf { it.startsWith("p2p-local-") }
+                ?: "p2p-local-${System.currentTimeMillis()}",
+            groupId = option.groupId,
+            groupName = option.groupName,
+            description = "${peerName} is nearby. Capture this moment with text, photo, audio, or video."
+        )
+
+        uiState = uiState.copy(
+            activities = listOf(activity) +
+                    uiState.activities.filterNot { it.id == activity.id },
+            p2pAlert = activity
+        )
+
+        return activity
+    }
+
     fun startNearby(userName: String) {
         nearbyManager.startAdvertising(userName)
         nearbyManager.startDiscovery()
@@ -135,35 +165,66 @@ class ActivitiesViewModel(
     private fun observeNearbyMembers() {
         viewModelScope.launch {
             nearbyManager.connectedMembers.collect { members ->
+                val member = members.firstOrNull()
 
-                val activity =
-                    members.firstOrNull()?.let { member ->
-                        ActivityItem(
-                            id = "p2p-local-${member.userId ?: member.endpointId}",
-                            groupId = member.sharedGroupId.orEmpty(),
-                            groupName = "Shared group",
-                            title = "What are you doing together right now?",
-                            description = "${member.endpointName} is nearby. Capture this moment with text, photo, audio, or video.",
-                            type = ActivityType.P2P_ALERT,
-                            status = ActivityStatus.PENDING,
-                            dueLabel = "Created just now · Nearby"
-                        )
-                    }
-
-                if (activity == null) {
+                if (member == null) {
                     uiState = uiState.copy(
                         p2pAlert = null,
-                        p2pAlertDismissed = false
+                        p2pAlertDismissed = false,
+                        p2pGroupOptions = emptyList(),
+                        p2pPeerName = ""
                     )
-                } else {
-                    uiState = uiState.copy(
-                        activities = listOf(activity) +
-                                uiState.activities.filterNot { it.id == activity.id },
-                        p2pAlert = activity,
-                        p2pAlertDismissed = false
+                    return@collect
+                }
+
+                val sharedGroupIds =
+                    member.sharedGroupIds
+                        .ifEmpty { listOfNotNull(member.sharedGroupId) }
+
+                val groupNames = repository.getGroupNames(sharedGroupIds)
+                val options = sharedGroupIds.map { groupId ->
+                    P2pGroupOption(
+                        groupId = groupId,
+                        groupName = groupNames[groupId] ?: "Shared group"
                     )
                 }
+
+                if (options.isEmpty()) {
+                    uiState = uiState.copy(
+                        p2pAlert = null,
+                        p2pGroupOptions = emptyList(),
+                        p2pPeerName = member.endpointName
+                    )
+                    return@collect
+                }
+
+                val selected = options.singleOrNull()
+                val alert = ActivityItem(
+                    id = "p2p-local-${member.userId ?: member.endpointId}",
+                    groupId = selected?.groupId.orEmpty(),
+                    groupName = selected?.groupName ?: "Choose a group",
+                    title = "What are you doing together right now?",
+                    description = "${member.endpointName} is nearby. Capture this moment with text, photo, audio, or video.",
+                    type = ActivityType.P2P_ALERT,
+                    status = ActivityStatus.PENDING,
+                    dueLabel = "Created just now · Nearby"
+                )
+
+                uiState = uiState.copy(
+                    activities =
+                        if (selected != null) {
+                            listOf(alert) +
+                                    uiState.activities.filterNot { it.id == alert.id }
+                        } else {
+                            uiState.activities.filterNot { it.id == alert.id }
+                        },
+                    p2pAlert = alert,
+                    p2pAlertDismissed = false,
+                    p2pGroupOptions = options,
+                    p2pPeerName = member.endpointName
+                )
             }
         }
     }
+
 }
