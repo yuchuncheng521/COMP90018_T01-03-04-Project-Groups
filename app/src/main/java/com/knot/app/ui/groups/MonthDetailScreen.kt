@@ -24,24 +24,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
 import com.knot.app.R
-import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotSand
-import com.knot.app.ui.theme.KnotTheme
 import com.knot.app.model.MemoryType
+import com.knot.app.ui.theme.JudsonFontFamily
+import com.knot.app.ui.theme.KnotTheme
 
 
 @Preview(showBackground = true)
@@ -78,7 +75,7 @@ fun MonthDetailScreen(
     val currentWeek = uiState.currentWeek
 
     Scaffold(
-        containerColor = KnotCream,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -91,14 +88,14 @@ fun MonthDetailScreen(
                     Icon(
                         painter = painterResource(R.drawable.left_arrow),
                         contentDescription = "Back to albums",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Text(
                     text = "${java.text.DateFormatSymbols().months[month - 1]} $year",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -124,13 +121,13 @@ fun MonthDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "Previous week",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Text(
                     text = currentWeek?.weekLabel ?: "No responses yet",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 IconButton(
@@ -140,7 +137,7 @@ fun MonthDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "Next week",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -150,13 +147,13 @@ fun MonthDetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(KnotSand, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                     .padding(24.dp)
             ) {
                 Text(
                     text = "\u201c${currentWeek?.questionText ?: "No prompt answered this week"}\u201d",
                     style = MaterialTheme.typography.titleMedium,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -176,7 +173,7 @@ fun MonthDetailScreen(
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
                             .background(
-                                KnotSand.copy(alpha = 0.4f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(12.dp)
                             )
                             .padding(16.dp)
@@ -187,7 +184,7 @@ fun MonthDetailScreen(
                             Text(
                                 text = memory.authorName,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = KnotDarkBrown
+                                color = MaterialTheme.colorScheme.secondary
                             )
 
                             Spacer(Modifier.height(8.dp))
@@ -197,7 +194,7 @@ fun MonthDetailScreen(
                                     Text(
                                         text = memory.textContent,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
@@ -216,7 +213,7 @@ fun MonthDetailScreen(
                                     Text(
                                         text = "Audio response",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
@@ -224,7 +221,7 @@ fun MonthDetailScreen(
                                     Text(
                                         text = "Video response",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -235,5 +232,3 @@ fun MonthDetailScreen(
         }
     }
 }
-
-

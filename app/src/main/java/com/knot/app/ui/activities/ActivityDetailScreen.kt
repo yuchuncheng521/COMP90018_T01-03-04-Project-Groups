@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,21 +26,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.rememberAsyncImagePainter
 import com.knot.app.R
 import com.knot.app.location.LocationManager
+import com.knot.app.model.ActivityType
 import com.knot.app.permissions.PermissionManager
 import com.knot.app.ui.audio.AudioRecorderScreen
 import com.knot.app.ui.camera.CameraScreen
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotInk
 import kotlinx.coroutines.launch
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ActivityDetailScreen(
     activityId: String,
@@ -56,6 +52,7 @@ fun ActivityDetailScreen(
     val activity = uiState.activities.find { it.id == activityId }
     val activityTitle = activity?.title ?: "Activity Name"
     val activityDescription = activity?.description ?: "No description provided."
+    val isP2pActivity = (activity?.type == ActivityType.P2P_ALERT || activityId.startsWith("p2p"))
 
     // Screen states
     var showCamera by remember { mutableStateOf(value = false) }
@@ -66,6 +63,26 @@ fun ActivityDetailScreen(
     var selectedPhotoPath by remember { mutableStateOf<String?>(null) }
     var selectedVideoPath by remember { mutableStateOf<String?>(null) }
     var selectedAudioPath by remember { mutableStateOf<String?>(null) }
+
+    // Dropdown state
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
+    // Eligible shared groups calculation
+    val eligibleGroups = remember(activity, uiState.userGroups) {
+        if (activity != null && activity.sharedGroupIds.isNotEmpty()) {
+            val matched = uiState.userGroups.filter { activity.sharedGroupIds.contains(it.id) }
+            if (matched.isNotEmpty()) matched else uiState.userGroups.filter { it.id == activity.groupId || activity.sharedGroupIds.contains(it.id) }
+        } else if (activity != null && activity.groupId.isNotBlank()) {
+            val matched = uiState.userGroups.filter { it.id == activity.groupId }
+            if (matched.isNotEmpty()) matched else uiState.userGroups
+        } else {
+            uiState.userGroups
+        }
+    }
+
+    var selectedGroupId by remember(eligibleGroups) {
+        mutableStateOf(eligibleGroups.firstOrNull()?.id ?: activity?.groupId.orEmpty())
+    }
 
     // Location
     val locationManager = remember { LocationManager(context) }
@@ -156,7 +173,61 @@ fun ActivityDetailScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                // Group Selector Dropdown (P2P Activities only)
+                if (isP2pActivity && eligibleGroups.isNotEmpty()) {
+                    val selectedGroup = eligibleGroups.find { it.id == selectedGroupId } ?: eligibleGroups.first()
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Share memory with group",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Only showing groups that nearby members belong to:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        ExposedDropdownMenuBox(
+                            expanded = dropdownExpanded,
+                            onExpandedChange = { dropdownExpanded = !dropdownExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedGroup.name,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Select Group") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = dropdownExpanded,
+                                onDismissRequest = { dropdownExpanded = false }
+                            ) {
+                                eligibleGroups.forEach { group ->
+                                    DropdownMenuItem(
+                                        text = { Text(group.name) },
+                                        onClick = {
+                                            selectedGroupId = group.id
+                                            dropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Action Buttons
                 OutlinedTextField(
@@ -166,10 +237,10 @@ fun ActivityDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = KnotCream,
-                        focusedContainerColor = KnotCream,
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = KnotDarkBrown
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     ),
                     minLines = 1,
                     maxLines = 5
@@ -238,7 +309,7 @@ fun ActivityDetailScreen(
                 }
 
                 if (currentLocationText != null) {
-                    Text("Location attached: $currentLocationText", style = MaterialTheme.typography.bodyMedium, color = KnotDarkBrown)
+                    Text("Location attached: $currentLocationText", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -252,9 +323,9 @@ fun ActivityDetailScreen(
                         onClick = onBackClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, KnotInk)
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
                     ) {
-                        Text("CANCEL", color = KnotInk)
+                        Text("CANCEL", color = MaterialTheme.colorScheme.onSurface)
                     }
                     Button(
                         onClick = {
@@ -265,14 +336,18 @@ fun ActivityDetailScreen(
                                 videoPath = selectedVideoPath,
                                 audioPath = selectedAudioPath,
                                 location = currentLocationText,
+                                targetGroupId = if (isP2pActivity) selectedGroupId else activity?.groupId,
                                 onSuccess = onBackClick
                             )
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
-                        Text("DONE", color = Color.White)
+                        Text("DONE")
                     }
                 }
             }
@@ -330,7 +405,7 @@ fun ActivityDetailScreen(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = KnotDarkBrown)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -342,12 +417,12 @@ private fun ResponseButton(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(text = text, color = Color.DarkGray)
+        Text(text = text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary)
     }
 }
 

@@ -1,16 +1,5 @@
 package com.knot.app.ui.settings
 
-import android.Manifest
-import android.bluetooth.BluetoothAdapter
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.os.Build
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Bluetooth
@@ -55,7 +45,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,13 +55,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import com.knot.app.R
-import com.knot.app.permissions.PermissionManager
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotGreen
 import com.knot.app.ui.theme.KnotRed
+import com.knot.app.ui.theme.KnotGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,18 +71,10 @@ fun AccountSettingsScreen(
     val uiState = viewModel.uiState
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // TODO: confirm with whoever wrote checkPermissions() whether this overlaps with
-    // the defensive checks below — kept both since checkPermissions() likely feeds the
-    // read-only SENSORS & PERMISSIONS status rows further down, a different job from
-    // the toggle-disabling logic in the next effect. Unverified — I haven't seen
-    // AccountSettingsViewModel.kt.
-    LaunchedEffect(Unit) {
-        viewModel.checkPermissions(context)
-    }
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(Unit) {
-        viewModel.refreshAvatarColor()
+        viewModel.checkPermissions(context,)
     }
 
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
@@ -111,370 +88,142 @@ fun AccountSettingsScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (!PermissionManager.isBluetoothEnabled(context)) {
-            viewModel.setP2pAlertsEnabled(false)
-        }
-
-        val notificationsAllowed =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
-
-        if (!notificationsAllowed && uiState.notificationsEnabled) {
-            viewModel.setNotificationsEnabled(false)
-        }
-
-        if (!PermissionManager.hasLocationPermission(context) &&
-            uiState.shareLocationWithMemories
-        ) {
-            viewModel.setShareLocationWithMemories(false)
-        }
-    }
-
-    DisposableEffect(Unit) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
-                    val state = intent.getIntExtra(
-                        BluetoothAdapter.EXTRA_STATE,
-                        BluetoothAdapter.ERROR
-                    )
-                    if (state == BluetoothAdapter.STATE_OFF) {
-                        viewModel.setP2pAlertsEnabled(false)
-                        Toast.makeText(
-                            context,
-                            "Bluetooth was turned off. P2P proximity alerts have been disabled.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            }
-        }
-        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
-        context.registerReceiver(receiver, filter)
-        onDispose { context.unregisterReceiver(receiver) }
-    }
-
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        viewModel.setNotificationsEnabled(granted)
-        if (!granted) {
-            Toast.makeText(
-                context,
-                "Notification permission is required to receive push notifications.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted =
-            permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        viewModel.setShareLocationWithMemories(granted)
-        if (!granted) {
-            Toast.makeText(
-                context,
-                "Location permission is required to attach location to memories.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    val nearbyPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
-                    permissions[Manifest.permission.BLUETOOTH_CONNECT] == true &&
-                    permissions[Manifest.permission.BLUETOOTH_ADVERTISE] == true &&
-                    permissions[Manifest.permission.NEARBY_WIFI_DEVICES] == true
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
-                    permissions[Manifest.permission.BLUETOOTH_CONNECT] == true &&
-                    permissions[Manifest.permission.BLUETOOTH_ADVERTISE] == true
-            } else {
-                true
-            }
-
-        if (granted) {
-            viewModel.setP2pAlertsEnabled(true)
-            viewModel.startNearby()
-        } else {
-            viewModel.setP2pAlertsEnabled(false)
-        }
-    }
-
     Scaffold(
         topBar = { TopAppBar(title = { Text("Settings", fontSize = 38.sp) }) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            // NOTE: no .verticalScroll() here on purpose — LazyColumn already scrolls
-            // internally. Adding one on top of the other crashes at runtime.
+                .padding(padding)
+                .verticalScroll(scrollState),
         ) {
-            item {
-                ProfileHeader(
-                    displayName = uiState.account.displayName,
-                    email = uiState.account.email,
-                    avatarColorHex = uiState.avatarColorHex,
-                    onClick = onProfileClick,
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
-            }
+            ProfileHeader(
+                displayName = uiState.account.displayName,
+                email = uiState.account.email,
+                onClick = onProfileClick,
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
 
-            item { SectionLabel("CUSTOMISATION & NOTIFICATIONS") }
-            item {
-                SettingsSwitchRow(
-                    icon = Icons.Filled.Notifications,
-                    title = "Push notifications",
-                    subtitle = "Get notified about new prompts and replies",
-                    checked = uiState.notificationsEnabled,
-                    onCheckedChange = { enabled ->
-                        if (!enabled) {
-                            viewModel.setNotificationsEnabled(false)
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            val alreadyGranted = ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.POST_NOTIFICATIONS
-                            ) == PackageManager.PERMISSION_GRANTED
+            SectionLabel("CUSTOMISATION & NOTIFICATIONS")
+            SettingsSwitchRow(
+                icon = Icons.Filled.Notifications,
+                title = "Push notifications",
+                subtitle = "Get notified about new prompts and replies",
+                checked = uiState.notificationsEnabled,
+                onCheckedChange = viewModel::setNotificationsEnabled,
+            )
+            SettingsSwitchRow(
+                icon = Icons.Filled.Notifications,
+                title = "Weekly prompt reminders",
+                subtitle = "A nudge if you haven't answered this week's prompt",
+                checked = uiState.weeklyPromptRemindersEnabled,
+                onCheckedChange = viewModel::setWeeklyPromptReminders
+            )
+            SettingsSwitchRow(
+                icon = Icons.Filled.Bluetooth,
+                title = "P2P proximity alerts",
+                subtitle = "Alert me when I'm near a group member (BLE)",
+                checked = uiState.p2pAlertsEnabled,
+                onCheckedChange = viewModel::setP2pAlertsEnabled
+            )
+            SettingsClickRow(
+                icon = Icons.Filled.Brush,
+                title = "App Preference",
+                subtitle = "Theme and Text size",
+                onClick = onAppPreferencesClick
+            )
 
-                            if (alreadyGranted) {
-                                viewModel.setNotificationsEnabled(true)
-                            } else {
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
-                        } else {
-                            viewModel.setNotificationsEnabled(true)
-                        }
-                    }
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    icon = Icons.Filled.Notifications,
-                    title = "Weekly prompt reminders",
-                    subtitle = "A nudge if you haven't answered this week's prompt",
-                    checked = uiState.weeklyPromptRemindersEnabled,
-                    onCheckedChange = viewModel::setWeeklyPromptReminders
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    icon = Icons.Filled.Bluetooth,
-                    title = "P2P proximity alerts",
-                    subtitle = "Alert me when I'm near a group member (BLE)",
-                    checked = uiState.p2pAlertsEnabled,
-                    onCheckedChange = { enabled ->
-                        if (!enabled) {
-                            viewModel.setP2pAlertsEnabled(false)
-                        } else if (!PermissionManager.isBluetoothEnabled(context)) {
-                            viewModel.setP2pAlertsEnabled(false)
-                            Toast.makeText(
-                                context,
-                                "Please turn on Bluetooth to use P2P proximity alerts.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else if (PermissionManager.hasNearbyPermissions(context)) {
-                            viewModel.setP2pAlertsEnabled(true)
-                            viewModel.startNearby()
-                        } else {
-                            val permissions =
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    arrayOf(
-                                        Manifest.permission.BLUETOOTH_SCAN,
-                                        Manifest.permission.BLUETOOTH_CONNECT,
-                                        Manifest.permission.BLUETOOTH_ADVERTISE,
-                                        Manifest.permission.NEARBY_WIFI_DEVICES
-                                    )
-                                } else {
-                                    arrayOf(
-                                        Manifest.permission.BLUETOOTH_SCAN,
-                                        Manifest.permission.BLUETOOTH_CONNECT,
-                                        Manifest.permission.BLUETOOTH_ADVERTISE
-                                    )
-                                }
-                            nearbyPermissionLauncher.launch(permissions)
-                        }
-                    }
-                )
-            }
-            if (uiState.nearbyError != null) {
-                item {
-                    Text(
-                        text = uiState.nearbyError,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-                }
-            }
-            item {
-                SettingsClickRow(
-                    icon = Icons.Filled.Brush,
-                    title = "App Preference",
-                    subtitle = "Theme and Text size",
-                    onClick = onAppPreferencesClick
-                )
-            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
+            SectionLabel("PRIVACY")
+            SettingsInfoRow(
+                icon = Icons.Filled.Lock,
+                title = "End-to-end encryption",
+                subtitle = "Only your circle can read this content",
+                value = "Enabled",
+                valueColor = if (true) KnotGreen else KnotRed
+            )
 
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
-            item { SectionLabel("PRIVACY") }
-            item {
-                // TODO: valueColor is hardcoded to always KnotGreen (if (true) ...) —
-                // this was already like this before the merge, not something either
-                // branch introduced, but worth fixing so "Enabled" reflects real state.
-                SettingsInfoRow(
-                    icon = Icons.Filled.Lock,
-                    title = "End-to-end encryption",
-                    subtitle = "Only your circle can read this content",
-                    value = "Enabled",
-                    valueColor = KnotGreen
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    icon = Icons.Filled.LocationOn,
-                    title = "Attach location to memories",
-                    subtitle = "Store where a memory happened along with the date",
-                    checked = uiState.shareLocationWithMemories,
-                    onCheckedChange = { enabled ->
-                        if (!enabled) {
-                            viewModel.setShareLocationWithMemories(false)
-                        } else if (PermissionManager.hasLocationPermission(context)) {
-                            viewModel.setShareLocationWithMemories(true)
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        }
-                    }
-                )
-            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
+            SectionLabel("SENSORS & PERMISSIONS")
+            SettingsStatusRow(
+                icon = Icons.Filled.Bluetooth,
+                title = "Bluetooth",
+                subtitle = "Used for P2P proximity alerts",
+                isAllowed = uiState.isBluetoothAllowed
+            )
+            SettingsStatusRow(
+                icon = Icons.Filled.LocationOn,
+                title = "Location",
+                subtitle = "Used for attaching locations to memories",
+                isAllowed = uiState.isLocationAllowed
+            )
+            SettingsStatusRow(
+                icon = Icons.Filled.CameraAlt,
+                title = "Camera",
+                subtitle = "Used for capturing photos and videos",
+                isAllowed = uiState.isCameraAllowed
+            )
+            SettingsStatusRow(
+                icon = Icons.Filled.Mic,
+                title = "Microphone",
+                subtitle = "Used for recording audio notes",
+                isAllowed = uiState.isMicrophoneAllowed
+            )
 
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
-            item { SectionLabel("SENSORS & PERMISSIONS") }
-            item {
-                SettingsStatusRow(
-                    icon = Icons.Filled.Bluetooth,
-                    title = "Bluetooth",
-                    subtitle = "Used for P2P proximity alerts",
-                    isAllowed = uiState.isBluetoothAllowed
-                )
-            }
-            item {
-                SettingsStatusRow(
-                    icon = Icons.Filled.LocationOn,
-                    title = "Location",
-                    subtitle = "Used for attaching locations to memories",
-                    isAllowed = uiState.isLocationAllowed
-                )
-            }
-            item {
-                SettingsStatusRow(
-                    icon = Icons.Filled.CameraAlt,
-                    title = "Camera",
-                    subtitle = "Used for capturing photos and videos",
-                    isAllowed = uiState.isCameraAllowed
-                )
-            }
-            item {
-                SettingsStatusRow(
-                    icon = Icons.Filled.Mic,
-                    title = "Microphone",
-                    subtitle = "Used for recording audio notes",
-                    isAllowed = uiState.isMicrophoneAllowed
-                )
-            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
+            SectionLabel("CONNECTIVITY & STORAGE")
+            SettingsInfoRow(
+                icon = Icons.Filled.Sync,
+                title = "Sync Status",
+                value = uiState.syncStatus,
+                valueColor = if (uiState.syncStatus == "Up to date") KnotGreen else KnotRed
+            )
+            SettingsSwitchRow(
+                icon = Icons.Filled.Wifi,
+                title = "Sync over Wi-Fi",
+                subtitle = "Only sync large files on Wi-Fi to save data",
+                checked = uiState.syncOverWifi,
+                onCheckedChange = viewModel::setSyncOverWifi
+            )
+            SettingsClickRow(
+                icon = Icons.Filled.DeleteSweep,
+                title = "Clear local cache",
+                subtitle = "Free up space on your device",
+                onClick = { viewModel.setShowClearCacheDialog(show = true) }
+            )
 
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
-            item { SectionLabel("CONNECTIVITY & STORAGE") }
-            item {
-                SettingsInfoRow(
-                    icon = Icons.Filled.Sync,
-                    title = "Sync Status",
-                    value = uiState.syncStatus,
-                    valueColor = if (uiState.syncStatus == "Up to date") KnotGreen else KnotRed
-                )
-            }
-            item {
-                SettingsProgressRow(
-                    icon = Icons.Filled.CloudQueue,
-                    title = "Cloud Storage Usage",
-                    progress = uiState.storageUsage,
-                    subtitle = "${(uiState.storageUsage * 100).toInt()}% of 5GB used"
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    icon = Icons.Filled.Wifi,
-                    title = "Sync over Wi-Fi",
-                    subtitle = "Only sync large files on Wi-Fi to save data",
-                    checked = uiState.syncOverWifi,
-                    onCheckedChange = viewModel::setSyncOverWifi
-                )
-            }
-            item {
-                SettingsClickRow(
-                    icon = Icons.Filled.DeleteSweep,
-                    title = "Clear local cache",
-                    subtitle = "Free up space on your device",
-                    onClick = { viewModel.setShowClearCacheDialog(show = true) }
-                )
-            }
-
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { viewModel.setShowLogoutDialog(true) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = RoundedCornerShape(24.dp)
                 ) {
-                    Button(
-                        onClick = { viewModel.signOut(onSignedOut) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = KnotDarkBrown,
-                            contentColor = KnotCream
-                        ),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text("Log out", modifier = Modifier.padding(start = 8.dp))
-                    }
-
-                    Button(
-                        onClick = onDeleteAccountClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = KnotRed,
-                            contentColor = KnotCream
-                        ),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Text("Delete Account")
-                    }
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("Log out", modifier = Modifier.padding(start = 8.dp))
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onDeleteAccountClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Text("Delete Account")
+                }
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
@@ -485,12 +234,35 @@ fun AccountSettingsScreen(
             text = { Text("This will delete temporary files stored on your device. Your account data in the cloud will not be affected.") },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearLocalCache(context) }) {
-                    Text("Clear", color = KnotDarkBrown)
+                    Text("Clear", color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.setShowClearCacheDialog(false) }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (uiState.showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowLogoutDialog(false) },
+            title = { Text("Log Out") },
+            text = { Text("Are you sure you want to log out of your account?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.setShowLogoutDialog(false)
+                        viewModel.signOut(onSignedOut)
+                    }
+                ) {
+                    Text("Log Out", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowLogoutDialog(false) }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
             }
         )
@@ -575,12 +347,7 @@ private fun SettingsProgressRow(
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -591,8 +358,8 @@ private fun SettingsProgressRow(
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(8.dp),
-                color = KnotDarkBrown,
-                trackColor = KnotDarkBrown.copy(alpha = 0.1f),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
             Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
@@ -633,7 +400,7 @@ private fun SettingsClickRow(
 }
 
 @Composable
-private fun ProfileHeader(displayName: String, email: String, avatarColorHex: String, onClick: () -> Unit) {
+private fun ProfileHeader(displayName: String, email: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -644,18 +411,16 @@ private fun ProfileHeader(displayName: String, email: String, avatarColorHex: St
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .background(Color(android.graphics.Color.parseColor(avatarColorHex)), CircleShape),
+                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }
         Column(modifier = Modifier.padding(start = 16.dp).weight(1f)) {
-            // Duplicate Text(displayName, ...) removed here — it appeared twice in a
-            // row in the pre-merge file, unrelated to either branch's actual changes.
             Text(text = displayName, style = MaterialTheme.typography.titleLarge)
             Text(
                 text = email.ifBlank { "No email on file" },

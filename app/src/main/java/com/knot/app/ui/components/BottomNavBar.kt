@@ -21,10 +21,8 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.material3.MaterialTheme
 import com.knot.app.navigation.MainScreen
-import com.knot.app.ui.theme.KnotBlue
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotInk
 import com.knot.app.ui.theme.KnotTheme
 
 @Composable
@@ -38,7 +36,7 @@ fun KnotBottomNavBar(navController: NavHostController) {
             .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(20.dp)),
-        containerColor = KnotBlue
+        containerColor = MaterialTheme.colorScheme.primary,
     ) {
         // nav bar point to action
         MainScreen.bottomNavItems.forEach { screen ->
@@ -64,9 +62,9 @@ fun KnotBottomNavBar(navController: NavHostController) {
                 },
                 // nav bar icon colour
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = KnotInk,
-                    unselectedIconColor = KnotCream.copy(alpha = 0.7f),
-                    indicatorColor = KnotCream
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
                 )
             )
         }

@@ -272,11 +272,10 @@ class NearbyManager(
                                 ?.toSet()
                                 .orEmpty()
 
-                        val sharedGroupId =
-                            myGroupIds.intersect(peerGroupIds)
-                                .firstOrNull()
+                        val sharedGroupIdsList =
+                            myGroupIds.intersect(peerGroupIds).toList()
 
-                        if (sharedGroupId == null) {
+                        if (sharedGroupIdsList.isEmpty()) {
                             connectionsClient.disconnectFromEndpoint(endpointId)
                             return@peerSuccess
                         }
@@ -297,7 +296,8 @@ class NearbyManager(
                                 endpointId = endpointId,
                                 endpointName = peerName,
                                 userId = peerUid,
-                                sharedGroupId = sharedGroupId
+                                sharedGroupId = sharedGroupIdsList.firstOrNull(),
+                                sharedGroupIds = sharedGroupIdsList
                             )
 
                         _nearbyMembers.value =

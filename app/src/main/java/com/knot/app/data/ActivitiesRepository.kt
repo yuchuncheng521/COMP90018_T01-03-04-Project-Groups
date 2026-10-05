@@ -10,6 +10,8 @@ import com.knot.app.crypto.GroupKeyManager
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
+import com.knot.app.model.Memory
+import com.knot.app.model.MemoryType
 import com.knot.app.nearby.NearbyManager
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -50,9 +52,10 @@ class ActivitiesRepository(
                     type = runCatching { ActivityType.valueOf(doc.getString("type") ?: "") }.getOrDefault(ActivityType.WEEKLY_PROMPT),
                     status = runCatching { ActivityStatus.valueOf(doc.getString("status") ?: "") }.getOrDefault(ActivityStatus.PENDING),
                     dueLabel = doc.getString("dueLabel") ?: "",
+                    createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: doc.getLong("createdAt") ?: System.currentTimeMillis()
                 )
-            }
-        }.getOrElse { emptyList() }
+            }.ifEmpty { sampleActivities }
+        }.getOrElse { sampleActivities }
     }
 
     /**
@@ -112,7 +115,8 @@ class ActivitiesRepository(
                     "type" to ActivityType.WEEKLY_PROMPT.name,
                     "status" to ActivityStatus.PENDING.name,
                     "dueLabel" to "New",
-                    "assignedTo" to memberId
+                    "assignedTo" to memberId,
+                    "createdAt" to FieldValue.serverTimestamp()
                 )
             )
         }
@@ -129,6 +133,11 @@ class ActivitiesRepository(
      * groupId is required now (not previously passed) specifically so the Storage
      * security rule can check group membership directly on this path, without an
      * extra lookup through the activity document.
+     *
+     * If the response is destined for the group timeline (same intent as the old
+     * targetGroupId parameter), a Memory is also written via TimelineRepository once
+     * the files are uploaded, using the same uploaded (pre-encryption) URLs so the
+     * timeline can render the actual content rather than a local device path.
      */
     suspend fun saveActivityResponse(
         context: Context,
@@ -138,7 +147,8 @@ class ActivitiesRepository(
         photoPath: String?,
         videoPath: String?,
         audioPath: String?,
-        location: String?
+        location: String?,
+        addToTimeline: Boolean = true
     ): Result<Unit> = runCatching {
         val uid = auth.currentUser?.uid ?: error("Not logged in")
 
@@ -203,7 +213,8 @@ class ActivitiesRepository(
                 description = "Answer with a photo, text, audio, or video.",
                 type = ActivityType.WEEKLY_PROMPT,
                 status = ActivityStatus.PENDING,
-                dueLabel = "Due in 3 days"
+                dueLabel = "Due in 3 days",
+                createdAt = System.currentTimeMillis() - 86400000L * 3
             ),
             ActivityItem(
                 id = "sample-2",
@@ -212,7 +223,8 @@ class ActivitiesRepository(
                 description = "A quick present-day check-in for the group.",
                 type = ActivityType.WEEKLY_PROMPT,
                 status = ActivityStatus.PENDING,
-                dueLabel = "Due in 5 days"
+                dueLabel = "Due in 5 days",
+                createdAt = System.currentTimeMillis() - 86400000L * 1
             ),
             ActivityItem(
                 id = "sample-3",
@@ -221,7 +233,8 @@ class ActivitiesRepository(
                 description = "Draw or decorate this month's memory page.",
                 type = ActivityType.ACTIVITY,
                 status = ActivityStatus.COMPLETED,
-                dueLabel = "Completed"
+                dueLabel = "Completed",
+                createdAt = System.currentTimeMillis() - 86400000L * 5
             )
         )
     }
