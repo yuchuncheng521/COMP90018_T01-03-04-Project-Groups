@@ -86,6 +86,28 @@ class ActivitiesRepository(
         firestore.collection("activities").document(activityId).update("status", status.name).await()
     }
 
+    suspend fun getGroupNames(groupIds: List<String>): Map<String, String> {
+        val names = linkedMapOf<String, String>()
+
+        groupIds.distinct().forEach { groupId ->
+            val snapshot = runCatching {
+                firestore.collection("groups")
+                    .document(groupId)
+                    .get()
+                    .await()
+            }.getOrNull()
+
+            val name = snapshot
+                ?.getString("name")
+                ?.takeIf { it.isNotBlank() }
+                ?: "Shared group"
+
+            names[groupId] = name
+        }
+
+        return names
+    }
+
     /**
      * Persists a locally-triggered P2P activity before its response is saved.
      *
