@@ -18,6 +18,12 @@ import kotlinx.coroutines.coroutineScope
  * Responses are read from activity_responses and their encrypted
  * text/media fields are decrypted with the group's shared key.
  */
+
+    private data class ActivityInfo(
+        val sharedActivityId: String,
+        val title: String,
+        val createdAt: Long
+    )
     class TimelineRepository(
         private val context: Context,
         private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -34,13 +40,18 @@ import kotlinx.coroutines.coroutineScope
                 .get()
                 .await()
 
-            val activityTitles = activitySnapshot.documents.associate { document ->
-                document.id to (
-                        document.getString("title")
-                            ?: document.getString("question")
-                            ?: document.getString("prompt")
-                            ?: ""
-                        )
+            val activityInfo = activitySnapshot.documents.associate { document ->
+                document.id to ActivityInfo(
+                    sharedActivityId = document.getString("sharedActivityId") ?: document.id,
+                    title = document.getString("title")
+                        ?: document.getString("question")
+                        ?: document.getString("prompt")
+                        ?: "",
+                    createdAt = document.getTimestamp("createdAt")
+                        ?.toDate()
+                        ?.time
+                        ?: 0L
+                )
             }
 
             // 2. Get every response for this group, queried directly by groupId
@@ -72,7 +83,11 @@ import kotlinx.coroutines.coroutineScope
             val memories = mutableListOf<Memory>()
 
             responseDocuments.forEach { response ->
+
                 val activityId = response.getString("activityId")
+                    ?: return@forEach
+
+                val activityInfoForResponse = activityInfo[activityId]
                     ?: return@forEach
 
                 val authorId = response.getString("userId")
@@ -80,12 +95,16 @@ import kotlinx.coroutines.coroutineScope
 
                 val authorName = authorNames[authorId] ?: "Member"
 
-                val activityTitle = activityTitles[activityId].orEmpty()
+                val activityTitle = activityInfoForResponse.title
+                val sharedActivityId = activityInfoForResponse.sharedActivityId
+                val activityCreatedAt = activityInfoForResponse.createdAt
 
                 val timestamp = response.getTimestamp("timestamp")
                     ?.toDate()
                     ?.time
                     ?: return@forEach
+
+                val locationText = response.getString("location").orEmpty()
 
                 // TEXT
                 val textCiphertext = response.getString("text").orEmpty()
@@ -104,10 +123,12 @@ import kotlinx.coroutines.coroutineScope
                             groupId = groupId,
                             authorId = authorId,
                             authorName = authorName,
-                            activityId = activityId,
+                            activityId = sharedActivityId,
                             activityTitle = activityTitle,
+                            activityCreatedAt = activityCreatedAt,
                             type = MemoryType.TEXT,
                             textContent = decryptedText,
+                            locationText = locationText,
                             createdAt = timestamp
                         )
                     }
@@ -130,11 +151,13 @@ import kotlinx.coroutines.coroutineScope
                             groupId = groupId,
                             authorId = authorId,
                             authorName = authorName,
-                            activityId = activityId,
+                            activityId = sharedActivityId,
                             activityTitle = activityTitle,
+                            activityCreatedAt = activityCreatedAt,
                             type = MemoryType.PHOTO,
                             contentUrl = decryptedPhotoUrl,
                             thumbnailUrl = decryptedPhotoUrl,
+                            locationText = locationText,
                             createdAt = timestamp
                         )
                     }
@@ -157,11 +180,13 @@ import kotlinx.coroutines.coroutineScope
                             groupId = groupId,
                             authorId = authorId,
                             authorName = authorName,
-                            activityId = activityId,
+                            activityId = sharedActivityId,
                             activityTitle = activityTitle,
+                            activityCreatedAt = activityCreatedAt,
                             type = MemoryType.VIDEO,
                             contentUrl = decryptedVideoUrl,
                             thumbnailUrl = decryptedVideoUrl,
+                            locationText = locationText,
                             createdAt = timestamp
                         )
                     }
@@ -184,11 +209,13 @@ import kotlinx.coroutines.coroutineScope
                             groupId = groupId,
                             authorId = authorId,
                             authorName = authorName,
-                            activityId = activityId,
+                            activityId = sharedActivityId,
                             activityTitle = activityTitle,
+                            activityCreatedAt = activityCreatedAt,
                             type = MemoryType.AUDIO,
                             contentUrl = decryptedAudioUrl,
                             thumbnailUrl = decryptedAudioUrl,
+                            locationText = locationText,
                             createdAt = timestamp
                         )
                     }
