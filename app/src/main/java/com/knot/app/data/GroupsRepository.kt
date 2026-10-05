@@ -134,16 +134,52 @@ class GroupsRepository(
                 .update("groupIds", FieldValue.arrayRemove(groupId))
                 .await()
         }
+
+        // Activities are fanned out one document per member (assignedTo), so
+        // removing someone from the group doesn't automatically take their
+        // copy away -- without this they'd keep seeing this group's activities
+        // in their own list forever. Both fields are plain equality filters,
+        // so this doesn't need a composite index.
+        runCatching {
+            val leftoverActivities = firestore.collection("activities")
+                .whereEqualTo("groupId", groupId)
+                .whereEqualTo("assignedTo", memberIdToRemove)
+                .get()
+                .await()
+
+            if (!leftoverActivities.isEmpty) {
+                val batch = firestore.batch()
+                leftoverActivities.documents.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+            }
+        }
     }
 
-    /** Deletes the whole group. Only the owner can do this. Note: this does NOT
-     *  cascade-delete the group's memories/activities -- known MVP limitation. */
+    /** Deletes the whole group. Only the owner can do this. Also deletes the
+     *  group's "activities" documents (see removeMember). Still does NOT
+     *  cascade-delete activity_responses or the unused "memories" collection. */
     suspend fun deleteGroup(groupId: String): Result<Unit> = runCatching {
         val uid = auth.currentUser?.uid ?: error("You need to be signed in to do that.")
         val docRef = firestore.collection("groups").document(groupId)
         val doc = docRef.get().await()
         val ownerId = doc.getString("ownerId") ?: ""
         if (uid != ownerId) error("Only the group owner can delete this group.")
+
+        // Same leftover-data issue as removeMember, but for every member at once:
+        // activities are fanned out one doc per member (assignedTo), so deleting
+        // just the group doc left everyone's activities for it behind.
+        runCatching {
+            val leftoverActivities = firestore.collection("activities")
+                .whereEqualTo("groupId", groupId)
+                .get()
+                .await()
+
+            if (!leftoverActivities.isEmpty) {
+                val batch = firestore.batch()
+                leftoverActivities.documents.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+            }
+        }
 
         docRef.delete().await()
     }

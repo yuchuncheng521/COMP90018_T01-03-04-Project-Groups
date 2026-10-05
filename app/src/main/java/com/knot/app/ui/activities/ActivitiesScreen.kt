@@ -19,17 +19,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -77,6 +78,7 @@ fun ActivitiesScreen(
     // Screen states
     var showCamera by remember { mutableStateOf(false) }
     var showAudioRecorder by remember { mutableStateOf(false) }
+    var showP2pGroupPicker by remember { mutableStateOf(false) }
 
     // Selected media
     var selectedPhotoPath by remember { mutableStateOf<String?>(null) }
@@ -280,7 +282,22 @@ fun ActivitiesScreen(
                         P2PAlertBanner(
                             alert = alert!!,
                             onRespond = {
-                                onActivityClick(alert)
+                                when {
+                                    uiState.p2pGroupOptions.size > 1 -> {
+                                        showP2pGroupPicker = true
+                                    }
+                                    uiState.p2pGroupOptions.size == 1 -> {
+                                        val selected = viewModel.selectP2pGroup(
+                                            uiState.p2pGroupOptions.first().groupId
+                                        )
+                                        if (selected != null) {
+                                            onActivityClick(selected)
+                                        }
+                                    }
+                                    else -> {
+                                        onActivityClick(alert)
+                                    }
+                                }
                             },
                             onDismiss = {
                                 viewModel.dismissP2pAlert()
@@ -314,27 +331,49 @@ fun ActivitiesScreen(
                         activity = activity,
                         onClick = {
                             onActivityClick(activity)
-                        },
-                        onToggleComplete = {
-                            viewModel.markCompleted(
-                                activity.id
-                            )
                         }
                     )
                 }
             }
 
-            // Simulate a successful verified P2P connection without a second phone.
-            item {
-                Button(
-                    onClick = {
-                        viewModel.simulateP2pConnection()
-                    }
+        }
+    }
+
+    if (showP2pGroupPicker) {
+        AlertDialog(
+            onDismissRequest = { showP2pGroupPicker = false },
+            title = { Text("Choose a group") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Simulate nearby group member")
+                    Text("Select a group for this nearby activity.")
+                    uiState.p2pGroupOptions.forEach { option ->
+                        TextButton(
+                            onClick = {
+                                val selected =
+                                    viewModel.selectP2pGroup(option.groupId)
+                                showP2pGroupPicker = false
+                                if (selected != null) {
+                                    onActivityClick(selected)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(option.groupName)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showP2pGroupPicker = false }
+                ) {
+                    Text("Cancel")
                 }
             }
-        }
+        )
     }
 }
 
@@ -343,7 +382,6 @@ fun ActivitiesScreen(
 private fun ActivityCard(
     activity: ActivityItem,
     onClick: () -> Unit,
-    onToggleComplete: () -> Unit,
 ) {
     val isCompleted =
         activity.status == ActivityStatus.COMPLETED
@@ -366,30 +404,27 @@ private fun ActivityCard(
                 Alignment.CenterVertically
         ) {
 
-            IconButton(
-                onClick = onToggleComplete
-            ) {
-                Icon(
-                    imageVector =
-                        if (isCompleted) {
-                            Icons.Filled.CheckCircle
-                        } else {
-                            Icons.Filled.RadioButtonUnchecked
-                        },
-                    contentDescription =
-                        if (isCompleted) {
-                            "Completed"
-                        } else {
-                            "Mark as complete"
-                        },
-                    tint =
-                        if (isCompleted) {
-                            MaterialTheme.colorScheme.secondary
-                        } else {
-                            MaterialTheme.colorScheme.outline
-                        }
-                )
-            }
+            Icon(
+                imageVector =
+                    if (isCompleted) {
+                        Icons.Filled.CheckCircle
+                    } else {
+                        Icons.Filled.RadioButtonUnchecked
+                    },
+                contentDescription =
+                    if (isCompleted) {
+                        "Completed"
+                    } else {
+                        "Not completed yet"
+                    },
+                tint =
+                    if (isCompleted) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
+                modifier = Modifier.size(24.dp)
+            )
 
             Column(
                 modifier = Modifier

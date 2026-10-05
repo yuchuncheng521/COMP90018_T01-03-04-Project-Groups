@@ -248,39 +248,35 @@ class NearbyManager(
             return
         }
 
-        val myUserRef =
-            firestore.collection("users").document(myUid)
-
         val peerUserRef =
             firestore.collection("users").document(peerUid)
 
-        myUserRef.get()
-            .addOnSuccessListener { myDocument ->
+        // Use the groups collection as the source of truth instead of users/{uid}.groupIds.
+        // A user's cached groupIds can contain stale IDs after a group is deleted, which
+        // previously produced a fake "Shared group" option in the P2P picker.
+        firestore.collection("groups")
+            .whereArrayContains("memberIds", myUid)
+            .get()
+            .addOnSuccessListener groupsSuccess@{ groupSnapshot ->
+                val sharedGroupIds =
+                    groupSnapshot.documents
+                        .filter { document ->
+                            val memberIds =
+                                (document.get("memberIds") as? List<*>)
+                                    ?.filterIsInstance<String>()
+                                    .orEmpty()
 
-                val myGroupIds =
-                    (myDocument.get("groupIds") as? List<*>)
-                        ?.filterIsInstance<String>()
-                        ?.toSet()
-                        .orEmpty()
+                            peerUid in memberIds
+                        }
+                        .map { it.id }
+
+                if (sharedGroupIds.isEmpty()) {
+                    connectionsClient.disconnectFromEndpoint(endpointId)
+                    return@groupsSuccess
+                }
 
                 peerUserRef.get()
-                    .addOnSuccessListener peerSuccess@{ peerDocument ->
-
-                        val peerGroupIds =
-                            (peerDocument.get("groupIds") as? List<*>)
-                                ?.filterIsInstance<String>()
-                                ?.toSet()
-                                .orEmpty()
-
-                        val sharedGroupId =
-                            myGroupIds.intersect(peerGroupIds)
-                                .firstOrNull()
-
-                        if (sharedGroupId == null) {
-                            connectionsClient.disconnectFromEndpoint(endpointId)
-                            return@peerSuccess
-                        }
-
+                    .addOnSuccessListener { peerDocument ->
                         val existingMember =
                             _nearbyMembers.value.firstOrNull {
                                 it.endpointId == endpointId
@@ -297,7 +293,8 @@ class NearbyManager(
                                 endpointId = endpointId,
                                 endpointName = peerName,
                                 userId = peerUid,
-                                sharedGroupId = sharedGroupId
+                                sharedGroupId = sharedGroupIds.first(),
+                                sharedGroupIds = sharedGroupIds
                             )
 
                         _nearbyMembers.value =
@@ -322,13 +319,13 @@ class NearbyManager(
                     }
                     .addOnFailureListener { exception ->
                         _errorMessage.value =
-                            "Could not check nearby member's groups: ${exception.message}"
+                            "Could not load nearby member: ${exception.message}"
                         connectionsClient.disconnectFromEndpoint(endpointId)
                     }
             }
             .addOnFailureListener { exception ->
                 _errorMessage.value =
-                    "Could not check your groups: ${exception.message}"
+                    "Could not check shared groups: ${exception.message}"
                 connectionsClient.disconnectFromEndpoint(endpointId)
             }
     }

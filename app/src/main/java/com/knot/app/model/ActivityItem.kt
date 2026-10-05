@@ -26,5 +26,6 @@ data class ActivityItem(
     val description: String = "",
     val type: ActivityType = ActivityType.WEEKLY_PROMPT,
     val status: ActivityStatus = ActivityStatus.PENDING,
-    val dueLabel: String = "" // e.g. "Due in 3 days" -- kept as a display string for this base build
+    val dueLabel: String = "", // e.g. "Due in 3 days" -- kept as a display string for this base build
+    val createdAt: Long = 0L // epoch millis, used to sort the Activities list newest-first
 )
