@@ -73,6 +73,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.crypto.tink:tink-android:1.13.0")
+    implementation("com.google.firebase:firebase-storage-ktx")
 
     // Coroutines <-> Firebase Task interop
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")

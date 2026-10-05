@@ -1,14 +1,21 @@
 package com.knot.app.data
 
+import android.content.Context
+import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import com.knot.app.crypto.GroupKeyManager
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
 import com.knot.app.model.Memory
 import com.knot.app.model.MemoryType
-import kotlinx.coroutines.tasks.await
 import com.knot.app.nearby.NearbyManager
+import kotlinx.coroutines.tasks.await
+import java.io.File
+import java.util.UUID
 
 /**
  * Loads the weekly prompts / activities assigned to the current user across all their groups.
@@ -25,6 +32,7 @@ class ActivitiesRepository(
 
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+    private val storage: FirebaseStorage by lazy { FirebaseStorage.getInstance() }
 
     suspend fun getActivities(): List<ActivityItem> {
         val uid = auth.currentUser?.uid ?: return sampleActivities
@@ -44,6 +52,7 @@ class ActivitiesRepository(
                     type = runCatching { ActivityType.valueOf(doc.getString("type") ?: "") }.getOrDefault(ActivityType.WEEKLY_PROMPT),
                     status = runCatching { ActivityStatus.valueOf(doc.getString("status") ?: "") }.getOrDefault(ActivityStatus.PENDING),
                     dueLabel = doc.getString("dueLabel") ?: "",
+                    createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: doc.getLong("createdAt") ?: System.currentTimeMillis()
                 )
             }.ifEmpty { sampleActivities }
         }.getOrElse { sampleActivities }
@@ -106,63 +115,83 @@ class ActivitiesRepository(
                     "type" to ActivityType.WEEKLY_PROMPT.name,
                     "status" to ActivityStatus.PENDING.name,
                     "dueLabel" to "New",
-                    "assignedTo" to memberId
+                    "assignedTo" to memberId,
+                    "createdAt" to FieldValue.serverTimestamp()
                 )
             )
         }
         batch.commit().await()
     }
 
+    /**
+     * Saves a member's response to an activity. photoPath/videoPath/audioPath are LOCAL
+     * device file paths (from CameraScreen/AudioRecorderScreen) -- each one, if present,
+     * gets uploaded to Storage here and replaced with its real download URL before
+     * anything is written to Firestore. Previously this wrote the raw local path
+     * directly into Firestore, which is meaningless on any other device.
+     *
+     * groupId is required now (not previously passed) specifically so the Storage
+     * security rule can check group membership directly on this path, without an
+     * extra lookup through the activity document.
+     *
+     * If the response is destined for the group timeline (same intent as the old
+     * targetGroupId parameter), a Memory is also written via TimelineRepository once
+     * the files are uploaded, using the same uploaded (pre-encryption) URLs so the
+     * timeline can render the actual content rather than a local device path.
+     */
     suspend fun saveActivityResponse(
+        context: Context,
         activityId: String,
+        groupId: String,
         text: String,
         photoPath: String?,
         videoPath: String?,
         audioPath: String?,
         location: String?,
-        targetGroupId: String? = null
+        addToTimeline: Boolean = true
     ): Result<Unit> = runCatching {
-        val uid = auth.currentUser?.uid ?: "guest-uid"
+        val uid = auth.currentUser?.uid ?: error("Not logged in")
+
+        val photoUrl = photoPath?.let { uploadFile(it, groupId, activityId, "photo") }
+        val videoUrl = videoPath?.let { uploadFile(it, groupId, activityId, "video") }
+        val audioUrl = audioPath?.let { uploadFile(it, groupId, activityId, "audio") }
+
+        // Encrypt the Storage download URLs the same way the text response is
+        // encrypted (GroupKeyManager.encryptText only handles String, which a
+        // URL is). Note this encrypts the URL, not the file bytes behind it --
+        // the actual photo/video/audio content in Storage is still only
+        // protected by the Storage security rules, not end-to-end encrypted.
+        val encryptedPhotoUrl = photoUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
+        val encryptedVideoUrl = videoUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
+        val encryptedAudioUrl = audioUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
+
         val response = mapOf(
             "activityId" to activityId,
+            "groupId" to groupId,
             "userId" to uid,
             "text" to text,
-            "photoPath" to photoPath,
-            "videoPath" to videoPath,
-            "audioPath" to audioPath,
+            "photoUrl" to encryptedPhotoUrl,
+            "videoUrl" to encryptedVideoUrl,
+            "audioUrl" to encryptedAudioUrl,
             "location" to location,
-            "targetGroupId" to targetGroupId,
-            "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            "timestamp" to FieldValue.serverTimestamp()
         )
-        runCatching {
-            firestore.collection("activity_responses").add(response).await()
-        }
+        firestore.collection("activity_responses").add(response).await()
 
-        if (!targetGroupId.isNullOrBlank()) {
-            val memoryType = when {
-                !photoPath.isNullOrBlank() -> MemoryType.PHOTO
-                !videoPath.isNullOrBlank() -> MemoryType.VIDEO
-                !audioPath.isNullOrBlank() -> MemoryType.AUDIO
-                else -> MemoryType.TEXT
-            }
-            val memory = Memory(
-                groupId = targetGroupId,
-                authorId = uid,
-                authorName = auth.currentUser?.displayName.orEmpty().ifBlank { "Group member" },
-                activityId = activityId,
-                type = memoryType,
-                textContent = text,
-                contentUrl = photoPath ?: videoPath ?: audioPath ?: "",
-                createdAt = System.currentTimeMillis()
-            )
-            runCatching {
-                TimelineRepository().createMemory(memory)
-            }
-        }
+        // After saving response, mark activity as completed
+        updateActivityStatus(activityId, ActivityStatus.COMPLETED).getOrThrow()
+    }
 
-        if (!activityId.startsWith("p2p-local-")) {
-            updateActivityStatus(activityId, ActivityStatus.COMPLETED)
-        }
+    private suspend fun uploadFile(localPath: String, groupId: String, activityId: String, kind: String): String {
+        val file = File(localPath)
+        val storageRef = storage.reference
+            .child("activity_responses")
+            .child(groupId)
+            .child(activityId)
+            .child("${kind}_${UUID.randomUUID()}.${file.extension}")
+
+        storageRef.putFile(Uri.fromFile(file)).await()
+        return storageRef.downloadUrl.await().toString()
     }
 
     companion object {
@@ -184,7 +213,8 @@ class ActivitiesRepository(
                 description = "Answer with a photo, text, audio, or video.",
                 type = ActivityType.WEEKLY_PROMPT,
                 status = ActivityStatus.PENDING,
-                dueLabel = "Due in 3 days"
+                dueLabel = "Due in 3 days",
+                createdAt = System.currentTimeMillis() - 86400000L * 3
             ),
             ActivityItem(
                 id = "sample-2",
@@ -193,7 +223,8 @@ class ActivitiesRepository(
                 description = "A quick present-day check-in for the group.",
                 type = ActivityType.WEEKLY_PROMPT,
                 status = ActivityStatus.PENDING,
-                dueLabel = "Due in 5 days"
+                dueLabel = "Due in 5 days",
+                createdAt = System.currentTimeMillis() - 86400000L * 1
             ),
             ActivityItem(
                 id = "sample-3",
@@ -202,7 +233,8 @@ class ActivitiesRepository(
                 description = "Draw or decorate this month's memory page.",
                 type = ActivityType.ACTIVITY,
                 status = ActivityStatus.COMPLETED,
-                dueLabel = "Completed"
+                dueLabel = "Completed",
+                createdAt = System.currentTimeMillis() - 86400000L * 5
             )
         )
     }

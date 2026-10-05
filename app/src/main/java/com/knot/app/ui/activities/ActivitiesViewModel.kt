@@ -46,6 +46,13 @@ class ActivitiesViewModel(
         observeNearbyMembers()
     }
 
+    private fun sortActivities(items: List<ActivityItem>): List<ActivityItem> {
+        return items.sortedWith(
+            compareBy<ActivityItem> { it.status == ActivityStatus.COMPLETED }
+                .thenByDescending { it.createdAt }
+        )
+    }
+
     fun loadActivities() {
         uiState = uiState.copy(isLoading = true)
 
@@ -56,7 +63,7 @@ class ActivitiesViewModel(
 
             uiState = uiState.copy(
                 isLoading = false,
-                activities = activities,
+                activities = sortActivities(activities),
                 p2pAlert = alert,
                 userGroups = userGroups
             )
@@ -70,20 +77,30 @@ class ActivitiesViewModel(
     }
 
     fun markCompleted(activityId: String) {
-        uiState = uiState.copy(
-            activities = uiState.activities.map {
-                if (it.id == activityId) {
-                    it.copy(status = ActivityStatus.COMPLETED)
-                } else {
-                    it
-                }
+        val updatedList = uiState.activities.map {
+            if (it.id == activityId) {
+                it.copy(status = ActivityStatus.COMPLETED)
+            } else {
+                it
             }
+        }
+        uiState = uiState.copy(
+            activities = sortActivities(updatedList)
         )
         viewModelScope.launch {
             repository.updateActivityStatus(activityId, ActivityStatus.COMPLETED)
         }
     }
 
+    /**
+     * Note on p2p-local-* activities: these are generated on-device (simulated or real
+     * Nearby Connections alerts) and don't have a matching Firestore "activities" document,
+     * so there's nothing for updateActivityStatus to update -- ActivitiesRepository already
+     * skips that call internally for ids starting with "p2p-local-". We still go through the
+     * full save path here (rather than short-circuiting in the ViewModel) so the response
+     * -- including any photo/video/audio -- still gets uploaded and written to the group
+     * timeline; only the (inapplicable) status update on the activity doc is skipped.
+     */
     fun submitActivityResponse(
         activityId: String,
         text: String,
@@ -107,19 +124,21 @@ class ActivitiesViewModel(
             }
 
             val result = repository.saveActivityResponse(
+                context = getApplication(),
                 activityId = activityId,
+                groupId = effectiveGroupId,
                 text = textToSave,
                 photoPath = photoPath,
                 videoPath = videoPath,
                 audioPath = audioPath,
-                location = location,
-                targetGroupId = effectiveGroupId
+                location = location
             )
+            val updatedList = uiState.activities.map {
+                if (it.id == activityId) it.copy(status = ActivityStatus.COMPLETED) else it
+            }
             uiState = uiState.copy(
                 isLoading = false,
-                activities = uiState.activities.map {
-                    if (it.id == activityId) it.copy(status = ActivityStatus.COMPLETED) else it
-                },
+                activities = sortActivities(updatedList),
                 p2pAlertDismissed = if (activityId.startsWith("p2p")) true else uiState.p2pAlertDismissed
             )
             result.onSuccess {
@@ -148,8 +167,8 @@ class ActivitiesViewModel(
             // Simulate nearby member in specific shared groups (e.g. Melbourne Uni Squad & Sarah & Qin Yu)
             val sharedGroups = groups.filter {
                 it.name.contains("Melbourne", ignoreCase = true) ||
-                it.name.contains("Sarah", ignoreCase = true) ||
-                it.name.contains("Squad", ignoreCase = true)
+                        it.name.contains("Sarah", ignoreCase = true) ||
+                        it.name.contains("Squad", ignoreCase = true)
             }.ifEmpty { groups.take(2) }
 
             val sharedGroupIds = sharedGroups.map { it.id }
@@ -164,11 +183,13 @@ class ActivitiesViewModel(
                 type = ActivityType.P2P_ALERT,
                 status = ActivityStatus.PENDING,
                 dueLabel = "Created just now · Nearby",
-                sharedGroupIds = sharedGroupIds
+                sharedGroupIds = sharedGroupIds,
+                createdAt = System.currentTimeMillis()
             )
 
+            val updatedList = listOf(activity) + uiState.activities.filterNot { it.id == activity.id }
             uiState = uiState.copy(
-                activities = listOf(activity) + uiState.activities.filterNot { it.id == activity.id },
+                activities = sortActivities(updatedList),
                 p2pAlert = activity,
                 p2pAlertDismissed = false,
                 userGroups = groups
@@ -197,7 +218,8 @@ class ActivitiesViewModel(
                             type = ActivityType.P2P_ALERT,
                             status = ActivityStatus.PENDING,
                             dueLabel = "Created just now · Nearby",
-                            sharedGroupIds = sharedGroupIds
+                            sharedGroupIds = sharedGroupIds,
+                            createdAt = System.currentTimeMillis()
                         )
                     }
 
@@ -207,9 +229,9 @@ class ActivitiesViewModel(
                         p2pAlertDismissed = false
                     )
                 } else {
+                    val updatedList = listOf(activity) + uiState.activities.filterNot { it.id == activity.id }
                     uiState = uiState.copy(
-                        activities = listOf(activity) +
-                                uiState.activities.filterNot { it.id == activity.id },
+                        activities = sortActivities(updatedList),
                         p2pAlert = activity,
                         p2pAlertDismissed = false
                     )

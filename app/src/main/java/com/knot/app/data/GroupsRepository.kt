@@ -25,8 +25,8 @@ class GroupsRepository(
                 .whereArrayContains("memberIds", uid)
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { it.toGroup() }.ifEmpty { sampleGroups }
-        }.getOrElse { sampleGroups }
+            snapshot.documents.mapNotNull { it.toGroup() }   // .ifEmpty { sampleGroups } removed
+        }.getOrElse { emptyList() }
     }
 
     /** Fetches a single group by id -- used by GroupDetailScreen to read its createdAt (for the month list) and other fields. */

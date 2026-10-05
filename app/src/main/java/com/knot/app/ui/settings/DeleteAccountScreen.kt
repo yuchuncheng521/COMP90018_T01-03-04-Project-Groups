@@ -16,7 +16,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.R
-import com.knot.app.ui.theme.KnotRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,20 +67,20 @@ fun DeleteAccountScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = KnotRed.copy(alpha = 0.1f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, KnotRed)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = "Warning: This action is permanent",
-                            color = KnotRed,
+                            color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
                             text = "Deleting your account will remove all your data from our database. This cannot be undone.",
-                            color = KnotRed,
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -128,8 +127,8 @@ fun DeleteAccountScreen(
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = KnotRed,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
                     Text("Delete My Account Permanently", fontWeight = FontWeight.Bold)
@@ -150,7 +149,7 @@ fun DeleteAccountScreen(
                     modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = KnotRed)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.error)
                 }
             }
         }

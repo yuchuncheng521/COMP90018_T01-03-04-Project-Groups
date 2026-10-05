@@ -32,7 +32,9 @@ private val LightColors = lightColorScheme(
     surface = KnotCream,
     onSurface = KnotInk,
     surfaceVariant = KnotSand,
-    error = KnotAlert
+    onSurfaceVariant = KnotInk,
+    error = KnotRed,
+    onError = KnotCream
 )
 
 private val DarkColors = darkColorScheme(
@@ -45,7 +47,10 @@ private val DarkColors = darkColorScheme(
     onBackground = KnotCream,
     surface = KnotDarkSurface,
     onSurface = KnotCream,
-    error = KnotAlert
+    surfaceVariant = KnotDarkSurface,
+    onSurfaceVariant = KnotCream,
+    error = KnotRed,
+    onError = KnotCream
 )
 
 private val MonochromeColors = lightColorScheme(
@@ -54,19 +59,12 @@ private val MonochromeColors = lightColorScheme(
     primaryContainer = Color(0xFFE5E5E5),
     onPrimaryContainer = Color(0xFF000000),
     secondary = Color(0xFF666666),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFEEEEEE),
-    onSecondaryContainer = Color(0xFF000000),
-    tertiary = Color(0xFF444444),
-    onTertiary = Color(0xFFFFFFFF),
     background = Color(0xFFFFFFFF),
     onBackground = Color(0xFF000000),
     surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF000000),
     surfaceVariant = Color(0xFFF0F0F0),
     onSurfaceVariant = Color(0xFF000000),
-    outline = Color(0xFF000000),
-    outlineVariant = Color(0xFF888888),
     error = Color(0xFF333333),
     onError = Color(0xFFFFFFFF)
 )
@@ -77,19 +75,12 @@ private val InvertColors = darkColorScheme(
     primaryContainer = Color(0xFF2B2B2B),
     onPrimaryContainer = Color(0xFFFFFFFF),
     secondary = Color(0xFFAAAAAA),
-    onSecondary = Color(0xFF000000),
-    secondaryContainer = Color(0xFF333333),
-    onSecondaryContainer = Color(0xFFFFFFFF),
-    tertiary = Color(0xFFCCCCCC),
-    onTertiary = Color(0xFF000000),
     background = Color(0xFF000000),
     onBackground = Color(0xFFFFFFFF),
     surface = Color(0xFF121212),
     onSurface = Color(0xFFFFFFFF),
     surfaceVariant = Color(0xFF222222),
     onSurfaceVariant = Color(0xFFFFFFFF),
-    outline = Color(0xFFFFFFFF),
-    outlineVariant = Color(0xFF888888),
     error = Color(0xFFCCCCCC),
     onError = Color(0xFF000000)
 )

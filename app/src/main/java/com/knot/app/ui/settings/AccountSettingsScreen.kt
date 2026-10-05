@@ -56,7 +56,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.R
-import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotRed
 import com.knot.app.ui.theme.KnotGreen
 
@@ -144,13 +143,6 @@ fun AccountSettingsScreen(
                 value = "Enabled",
                 valueColor = if (true) KnotGreen else KnotRed
             )
-            SettingsSwitchRow(
-                icon = Icons.Filled.LocationOn,
-                title = "Attach location to memories",
-                subtitle = "Store where a memory happened along with the date",
-                checked = uiState.shareLocationWithMemories,
-                onCheckedChange = viewModel::setShareLocationWithMemories
-            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
             SectionLabel("SENSORS & PERMISSIONS")
@@ -186,12 +178,6 @@ fun AccountSettingsScreen(
                 title = "Sync Status",
                 value = uiState.syncStatus,
                 valueColor = if (uiState.syncStatus == "Up to date") KnotGreen else KnotRed
-            )
-            SettingsProgressRow(
-                icon = Icons.Filled.CloudQueue,
-                title = "Cloud Storage Usage",
-                progress = uiState.storageUsage,
-                subtitle = "${(uiState.storageUsage * 100).toInt()}% of 5GB used"
             )
             SettingsSwitchRow(
                 icon = Icons.Filled.Wifi,
@@ -229,8 +215,8 @@ fun AccountSettingsScreen(
                     onClick = onDeleteAccountClick,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = KnotRed,
-                        contentColor = KnotCream
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     ),
                     shape = RoundedCornerShape(24.dp)
                 ) {

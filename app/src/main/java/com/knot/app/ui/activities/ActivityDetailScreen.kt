@@ -359,14 +359,26 @@ fun ActivityDetailScreen(
                 onPhotoSelected = { photoPath ->
                     selectedPhotoPath = photoPath
                     showCamera = false
-                    updateCurrentLocation()
+                    if (PermissionManager.hasLocationPermission(context)) {
+                        updateCurrentLocation()
+                    } else {
+                        locationPermissionLauncher.launch(
+                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                        )
+                    }
                 },
                 onVideoSelected = { videoPath ->
                     selectedVideoPath = videoPath
                     showCamera = false
-                    updateCurrentLocation()
+                    if (PermissionManager.hasLocationPermission(context)) {
+                        updateCurrentLocation()
+                    } else {
+                        locationPermissionLauncher.launch(
+                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                        )
+                    }
                 },
-                onCancel = { showCamera = false },
+                onCancel = { showCamera = false }
             )
         }
 
@@ -376,7 +388,13 @@ fun ActivityDetailScreen(
                 onAudioSelected = { audioPath ->
                     selectedAudioPath = audioPath
                     showAudioRecorder = false
-                    updateCurrentLocation()
+                    if (PermissionManager.hasLocationPermission(context)) {
+                        updateCurrentLocation()
+                    } else {
+                        locationPermissionLauncher.launch(
+                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                        )
+                    }
                 },
                 onCancel = { showAudioRecorder = false },
             )

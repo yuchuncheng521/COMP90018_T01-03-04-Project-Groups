@@ -1,113 +1,244 @@
 package com.knot.app.data
 
+import android.content.Context
+import com.google.firebase.auth.FirebaseAuth
+import com.knot.app.crypto.GroupKeyManager
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.knot.app.model.Memory
 import com.knot.app.model.MemoryType
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 /**
  * Loads and aggregates every member's contributions for a group into one
  * chronologically ordered shared timeline.
  *
- * STUB: reads from a "memories" Firestore collection filtered by groupId.
- * Falls back to [sampleMemories] so the Timeline screen is demoable before
- * the collection is populated with real data.
+ * Responses are read from activity_responses and their encrypted
+ * text/media fields are decrypted with the group's shared key.
  */
-class TimelineRepository {
-
-    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
-
+    class TimelineRepository(
+        private val context: Context,
+        private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+        private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    ) {
     /** Full timeline for a group, newest first. */
     suspend fun getTimelineForGroup(groupId: String): List<Memory> {
+        val myUid = auth.currentUser?.uid ?: return emptyList()
+
         return runCatching {
-            val snapshot = firestore.collection("memories")
+            // 1. Get every activity belonging to this group
+            val activitySnapshot = firestore.collection("activities")
                 .whereEqualTo("groupId", groupId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
 
-            snapshot.documents.map { it.toMemory() }.ifEmpty { sampleMemories }
-        }.getOrElse { sampleMemories }
+            val activityTitles = activitySnapshot.documents.associate { document ->
+                document.id to (
+                        document.getString("title")
+                            ?: document.getString("question")
+                            ?: document.getString("prompt")
+                            ?: ""
+                        )
+            }
+
+            val activityIds = activitySnapshot.documents.map { it.id }
+
+            if (activityIds.isEmpty()) {
+                return@runCatching emptyList<Memory>()
+            }
+
+            // 2. Get all responses belonging to those activities
+            // Firestore whereIn queries are limited, so use batches of 30
+            val responseSnapshots = coroutineScope {
+                activityIds.chunked(30).map { chunk ->
+                    async {
+                        firestore.collection("activity_responses")
+                            .whereIn("activityId", chunk)
+                            .get()
+                            .await()
+                    }
+                }.awaitAll()
+            }
+
+            val responseDocuments = responseSnapshots.flatMap { it.documents }
+
+            if (responseDocuments.isEmpty()) {
+                return@runCatching emptyList<Memory>()
+            }
+
+            // 3. Load author names
+            val authorIds = responseDocuments
+                .mapNotNull { it.getString("userId") }
+                .distinct()
+
+            val authorNames = loadAuthorNames(authorIds)
+
+            // 4. Each response can contain multiple types of content
+            val memories = mutableListOf<Memory>()
+
+            responseDocuments.forEach { response ->
+                val activityId = response.getString("activityId")
+                    ?: return@forEach
+
+                val activity = activitySnapshot.documents
+                    .firstOrNull { it.id == activityId }
+                    ?: return@forEach
+
+                val authorId = response.getString("userId")
+                    ?: return@forEach
+
+                val authorName = authorNames[authorId] ?: "Member"
+
+                val activityTitle = activityTitles[activityId].orEmpty()
+
+                val timestamp = response.getTimestamp("timestamp")
+                    ?.toDate()
+                    ?.time
+                    ?: return@forEach
+
+                // TEXT
+                val textCiphertext = response.getString("text").orEmpty()
+
+                if (textCiphertext.isNotBlank()) {
+                    val decryptedText = GroupKeyManager.decryptText(
+                        context = context,
+                        groupId = groupId,
+                        myUid = myUid,
+                        ciphertextBase64 = textCiphertext
+                    )
+
+                    if (!decryptedText.isNullOrBlank()) {
+                        memories += Memory(
+                            id = "${response.id}_text",
+                            groupId = groupId,
+                            authorId = authorId,
+                            authorName = authorName,
+                            activityId = activityId,
+                            activityTitle = activityTitle,
+                            type = MemoryType.TEXT,
+                            textContent = decryptedText,
+                            createdAt = timestamp
+                        )
+                    }
+                }
+
+                // PHOTO
+                val photoCiphertext = response.getString("photoUrl").orEmpty()
+
+                if (photoCiphertext.isNotBlank()) {
+                    val decryptedPhotoUrl = GroupKeyManager.decryptText(
+                        context = context,
+                        groupId = groupId,
+                        myUid = myUid,
+                        ciphertextBase64 = photoCiphertext
+                    )
+
+                    if (!decryptedPhotoUrl.isNullOrBlank()) {
+                        memories += Memory(
+                            id = "${response.id}_photo",
+                            groupId = groupId,
+                            authorId = authorId,
+                            authorName = authorName,
+                            activityId = activityId,
+                            activityTitle = activityTitle,
+                            type = MemoryType.PHOTO,
+                            contentUrl = decryptedPhotoUrl,
+                            thumbnailUrl = decryptedPhotoUrl,
+                            createdAt = timestamp
+                        )
+                    }
+                }
+
+                // VIDEO
+                val videoCiphertext = response.getString("videoUrl").orEmpty()
+
+                if (videoCiphertext.isNotBlank()) {
+                    val decryptedVideoUrl = GroupKeyManager.decryptText(
+                        context = context,
+                        groupId = groupId,
+                        myUid = myUid,
+                        ciphertextBase64 = videoCiphertext
+                    )
+
+                    if (!decryptedVideoUrl.isNullOrBlank()) {
+                        memories += Memory(
+                            id = "${response.id}_video",
+                            groupId = groupId,
+                            authorId = authorId,
+                            authorName = authorName,
+                            activityId = activityId,
+                            activityTitle = activityTitle,
+                            type = MemoryType.VIDEO,
+                            contentUrl = decryptedVideoUrl,
+                            thumbnailUrl = decryptedVideoUrl,
+                            createdAt = timestamp
+                        )
+                    }
+                }
+
+                // AUDIO
+                val audioCiphertext = response.getString("audioUrl").orEmpty()
+
+                if (audioCiphertext.isNotBlank()) {
+                    val decryptedAudioUrl = GroupKeyManager.decryptText(
+                        context = context,
+                        groupId = groupId,
+                        myUid = myUid,
+                        ciphertextBase64 = audioCiphertext
+                    )
+
+                    if (!decryptedAudioUrl.isNullOrBlank()) {
+                        memories += Memory(
+                            id = "${response.id}_audio",
+                            groupId = groupId,
+                            authorId = authorId,
+                            authorName = authorName,
+                            activityId = activityId,
+                            activityTitle = activityTitle,
+                            type = MemoryType.AUDIO,
+                            contentUrl = decryptedAudioUrl,
+                            thumbnailUrl = decryptedAudioUrl,
+                            createdAt = timestamp
+                        )
+                    }
+                }
+            }
+
+            memories.sortedByDescending { it.createdAt }
+
+        }.getOrElse { error ->
+            android.util.Log.e("TimelineRepository", "Failed to load timeline", error)
+            emptyList()
+        }
     }
 
-    /**
-     * Creates a new memory (text/photo/audio/video answer) for a group.
-     * Photo/audio/video types only store a contentUrl if you already have one
-     * (e.g. from Firebase Storage) -- actual file upload isn't wired yet, so
-     * for now this is easiest to test with MemoryType.TEXT.
-     */
-    suspend fun createMemory(memory: Memory): Result<Memory> = runCatching {
-        val docRef = firestore.collection("memories").document()
-        val data = mapOf(
-            "groupId" to memory.groupId,
-            "authorId" to memory.authorId,
-            "authorName" to memory.authorName,
-            "activityId" to memory.activityId,
-            "type" to memory.type.name,
-            "contentUrl" to memory.contentUrl,
-            "thumbnailUrl" to memory.thumbnailUrl,
-            "textContent" to memory.textContent,
-            "locationLat" to memory.locationLat,
-            "locationLng" to memory.locationLng,
-            "createdAt" to System.currentTimeMillis()
-        )
-        docRef.set(data).await()
-        memory.copy(id = docRef.id)
-    }
+    private suspend fun loadAuthorNames(
+        authorIds: List<String>
+    ): Map<String, String> {
+        if (authorIds.isEmpty()) return emptyMap()
 
-    /** Just the memories inside one week, oldest first (for the weekly spread view). */
-    suspend fun getMemoriesForWeek(groupId: String, weekStartMillis: Long, weekEndMillis: Long): List<Memory> {
-        return runCatching {
-            val snapshot = firestore.collection("memories")
-                .whereEqualTo("groupId", groupId)
-                .whereGreaterThanOrEqualTo("createdAt", weekStartMillis)
-                .whereLessThanOrEqualTo("createdAt", weekEndMillis)
-                .orderBy("createdAt")
-                .get()
-                .await()
+        return coroutineScope {
+            authorIds.map { uid ->
+                async {
+                    runCatching {
+                        val document = firestore
+                            .collection("users")
+                            .document(uid)
+                            .get()
+                            .await()
 
-            snapshot.documents.map { it.toMemory() }
-        }.getOrElse { emptyList() }
-    }
-
-    private fun com.google.firebase.firestore.DocumentSnapshot.toMemory() = Memory(
-        id = id,
-        groupId = getString("groupId") ?: "",
-        authorId = getString("authorId") ?: "",
-        authorName = getString("authorName") ?: "",
-        activityId = getString("activityId") ?: "",
-        type = runCatching { MemoryType.valueOf(getString("type") ?: "") }.getOrDefault(MemoryType.TEXT),
-        contentUrl = getString("contentUrl") ?: "",
-        thumbnailUrl = getString("thumbnailUrl") ?: "",
-        textContent = getString("textContent") ?: "",
-        locationLat = getDouble("locationLat"),
-        locationLng = getDouble("locationLng"),
-        createdAt = getLong("createdAt") ?: 0L
-    )
-
-    companion object {
-        /** Placeholder data shown when there's no Firebase project configured yet, or no memories exist. */
-        val sampleMemories = listOf(
-            Memory(
-                id = "sample-1",
-                groupId = "sample-1",
-                authorId = "u1",
-                authorName = "Sarah",
-                type = MemoryType.PHOTO,
-                thumbnailUrl = "",
-                textContent = "",
-                createdAt = System.currentTimeMillis() - 3_600_000
-            ),
-            Memory(
-                id = "sample-2",
-                groupId = "sample-1",
-                authorId = "u2",
-                authorName = "Mariana",
-                type = MemoryType.TEXT,
-                textContent = "Grandma's arroz con pollo, every Sunday without fail.",
-                createdAt = System.currentTimeMillis() - 90_000_000
-            )
-        )
+                        uid to (
+                                document.getString("displayName")
+                                    ?: document.getString("name")
+                                    ?: uid
+                                )
+                    }.getOrDefault(uid to uid)
+                }
+            }
+                .awaitAll()
+                .toMap()
+        }
     }
 }
