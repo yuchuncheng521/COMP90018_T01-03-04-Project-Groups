@@ -87,6 +87,51 @@ class ActivitiesRepository(
     }
 
     /**
+     * Persists a locally-triggered P2P activity before its response is saved.
+     *
+     * Nearby detection itself is local, but once the user chooses to respond we need a
+     * real Firestore activity document so the normal response/upload/timeline flow can
+     * be reused. This document is assigned to the current user only; the response is
+     * still shared to the group via activity_responses.groupId.
+     */
+    suspend fun createP2pActivity(activity: ActivityItem): Result<ActivityItem> = runCatching {
+        val uid = auth.currentUser?.uid ?: error("Not logged in")
+        if (activity.groupId.isBlank()) error("Missing shared group for P2P activity.")
+
+        val groupSnapshot = firestore.collection("groups")
+            .document(activity.groupId)
+            .get()
+            .await()
+
+        val resolvedGroupName =
+            groupSnapshot.getString("name")
+                ?.takeIf { it.isNotBlank() }
+                ?: activity.groupName.ifBlank { "Shared group" }
+
+        val docRef = firestore.collection("activities").document()
+
+        docRef.set(
+            mapOf(
+                "groupId" to activity.groupId,
+                "groupName" to resolvedGroupName,
+                "title" to activity.title,
+                "description" to activity.description,
+                "type" to ActivityType.P2P_ALERT.name,
+                "status" to ActivityStatus.PENDING.name,
+                "dueLabel" to "Created just now · Nearby",
+                "assignedTo" to uid,
+                "createdBy" to uid,
+                "createdAt" to FieldValue.serverTimestamp()
+            )
+        ).await()
+
+        activity.copy(
+            id = docRef.id,
+            groupName = resolvedGroupName
+        )
+    }
+
+    /**
      * Creates a new activity/prompt and assigns it to every member of the group.
      *
      * [getActivities] filters "activities" by a single-valued "assignedTo" field
