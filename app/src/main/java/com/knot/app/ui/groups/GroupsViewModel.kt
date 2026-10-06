@@ -46,26 +46,24 @@ class GroupsViewModel @JvmOverloads constructor(
     }
 
     /**
-     * Starts listening to the signed-in user's groups. Safe to call more than once -- it
-     * only starts a listener if one isn't already running, so existing callers (the screen's
-     * LaunchedEffect, leave/delete/remove) keep working. The list now updates by itself when
-     * anything changes: a member joins or leaves, a group is created or deleted, etc.
+     * The groups list is live (a listener updates it when a member joins/leaves, a group is
+     * created or deleted, etc.). Avatar colours/names are refreshed every time this is
+     * called -- the screen calls it each time you open it -- so a colour or name changed in
+     * Settings shows up when you come back to Groups, as it did before the listener.
      */
     fun loadGroups() {
-        if (observeJob?.isActive == true) return
+        if (observeJob?.isActive == true) {
+            // Listener already running: just refresh the avatars (the old "refresh on entry").
+            refreshAvatars(uiState.groups.flatMap { it.memberIds }.distinct())
+            return
+        }
 
         uiState = uiState.copy(isLoading = true)
         observeJob = viewModelScope.launch {
             repository.observeGroups().collect { groups ->
                 uiState = uiState.copy(isLoading = false, groups = groups)
 
-                val allMemberIds = groups.flatMap { it.memberIds }.distinct()
-                if (allMemberIds.isNotEmpty()) {
-                    launch {
-                        val info = repository.getMemberAvatarInfo(allMemberIds)
-                        uiState = uiState.copy(memberAvatarInfo = info)
-                    }
-                }
+                refreshAvatars(groups.flatMap { it.memberIds }.distinct())
 
                 val myUid = auth.currentUser?.uid ?: return@collect
                 groups.filter { it.ownerId == myUid }.forEach { group ->
@@ -78,6 +76,14 @@ class GroupsViewModel @JvmOverloads constructor(
                     }
                 }
             }
+        }
+    }
+
+    private fun refreshAvatars(memberIds: List<String>) {
+        if (memberIds.isEmpty()) return
+        viewModelScope.launch {
+            val info = repository.getMemberAvatarInfo(memberIds)
+            uiState = uiState.copy(memberAvatarInfo = info)
         }
     }
 
