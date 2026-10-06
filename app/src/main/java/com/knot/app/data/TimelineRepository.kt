@@ -10,6 +10,11 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.map
 
 /**
  * Loads and aggregates every member's contributions for a group into one
@@ -257,4 +262,23 @@ import kotlinx.coroutines.coroutineScope
                 .toMap()
         }
     }
+    /**
+     * Emits a freshly built timeline every time this group's responses change, including
+     * your own edits/deletes and the background upload attaching a photo to a response.
+     * The listener only acts as a trigger; the existing getTimelineForGroup() still does
+     * the decrypting and building, so that logic isn't duplicated.
+     */
+    fun observeTimelineForGroup(groupId: String): Flow<List<Memory>> = callbackFlow {
+        val registration = firestore.collection("activity_responses")
+            .whereEqualTo("groupId", groupId)
+            .addSnapshotListener { _, error ->
+                if (error != null) {
+                    android.util.Log.e("TimelineRepository", "Listener failed", error)
+                }
+                trySend(Unit)
+            }
+        awaitClose { registration.remove() }
+    }
+        .conflate()
+        .map { getTimelineForGroup(groupId) }
 }
