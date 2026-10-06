@@ -131,7 +131,7 @@ class ActivitiesViewModel(
             val responseId = result.getOrNull()
             if (responseId != null) {
                 // Step 2: media afterwards, in the background (UploadResponseMediaWorker).
-                android.util.Log.d("PriorityTest", "TEXT SAVED  ${System.currentTimeMillis()}")
+//                android.util.Log.d("PriorityTest", "TEXT SAVED  ${System.currentTimeMillis()}")
                 if (hasMedia) {
                     enqueueMediaUpload(
                         responseId, groupId, persistedActivityId,

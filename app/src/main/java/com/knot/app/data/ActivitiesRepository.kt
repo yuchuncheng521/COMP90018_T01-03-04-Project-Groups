@@ -277,7 +277,7 @@ class ActivitiesRepository(
             val url = uploadFile(path, groupId, activityId, kind, responseId)
             val stored = GroupKeyManager.encryptText(context, groupId, uid, url) ?: url
             docRef.update("${kind}Url", stored).await()
-            android.util.Log.d("PriorityTest", "$kind ATTACHED ${System.currentTimeMillis()}")
+//            android.util.Log.d("PriorityTest", "$kind ATTACHED ${System.currentTimeMillis()}")
 
         }
         docRef.update("mediaStatus", "done").await()
