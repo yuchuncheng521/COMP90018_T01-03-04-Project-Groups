@@ -9,14 +9,10 @@ val KnotSand = Color(0xFFF0E7DA)
 val KnotClay = Color(0xFFC97C5D)
 val KnotClayDark = Color(0xFFA85F45)
 val KnotInk = Color(0xFF2B2723)
-val KnotSage = Color(0xFF7C9885)
-val KnotAlert = Color(0xFFD98241)
-
-val KnotDarkBackground = Color(0xFF1C1A18)
-val KnotDarkSurface = Color(0xFF272320)
-
+val KnotSage = Color(0xFF34655F)
 val KnotRed = Color(0xFF8C2E30)
+val KnotRedDark = Color(0xFFD86F71)
 val KnotDarkBrown = Color(0xFF3C251A)
-
 val KnotBlue = Color(0xFF9CB5C0)
 val KnotGreen = Color(0xFF428A68)
+val KnotGreenDark = Color(0xFF68B691)

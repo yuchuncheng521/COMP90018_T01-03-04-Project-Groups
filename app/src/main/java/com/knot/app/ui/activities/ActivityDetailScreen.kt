@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,9 +34,6 @@ import com.knot.app.location.LocationManager
 import com.knot.app.permissions.PermissionManager
 import com.knot.app.ui.audio.AudioRecorderScreen
 import com.knot.app.ui.camera.CameraScreen
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotInk
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -166,10 +162,10 @@ fun ActivityDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = KnotCream,
-                        focusedContainerColor = KnotCream,
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = KnotDarkBrown
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     ),
                     minLines = 1,
                     maxLines = 5
@@ -238,7 +234,7 @@ fun ActivityDetailScreen(
                 }
 
                 if (currentLocationText != null) {
-                    Text("Location attached: $currentLocationText", style = MaterialTheme.typography.bodyMedium, color = KnotDarkBrown)
+                    Text("Location attached: $currentLocationText", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -252,9 +248,9 @@ fun ActivityDetailScreen(
                         onClick = onBackClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, KnotInk)
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
                     ) {
-                        Text("CANCEL", color = KnotInk)
+                        Text("CANCEL", color = MaterialTheme.colorScheme.onSurface)
                     }
                     Button(
                         onClick = {
@@ -270,9 +266,12 @@ fun ActivityDetailScreen(
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
-                        Text("DONE", color = Color.White)
+                        Text("DONE")
                     }
                 }
             }
@@ -330,7 +329,7 @@ fun ActivityDetailScreen(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = KnotDarkBrown)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -342,12 +341,12 @@ private fun ResponseButton(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text(text = text, color = Color.DarkGray)
+        Text(text = text, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

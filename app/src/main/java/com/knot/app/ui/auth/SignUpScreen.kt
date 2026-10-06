@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.sp
 import com.knot.app.R
 import com.knot.app.model.UserAccount
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotTheme
 
 @Preview(showBackground = true)
@@ -111,7 +110,7 @@ fun SignUpScreen(
                 fontFamily = JudsonFontFamily,
                 fontSize = 34.sp,
                 lineHeight = 34.sp,
-                color = KnotDarkBrown,
+                color = MaterialTheme.colorScheme.secondary,
             )
 
             Spacer(Modifier.height(60.dp))

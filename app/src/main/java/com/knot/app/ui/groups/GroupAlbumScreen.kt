@@ -31,9 +31,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.knot.app.R
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
 
 @Composable
@@ -50,7 +47,7 @@ fun GroupDetailScreen(
     }
 
     Scaffold(
-        containerColor = KnotCream,
+        containerColor = MaterialTheme.colorScheme.onPrimary,
         topBar = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -65,7 +62,7 @@ fun GroupDetailScreen(
                     Icon(
                         painter = painterResource(R.drawable.left_arrow),
                         contentDescription = "Back to groups",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -73,7 +70,7 @@ fun GroupDetailScreen(
                     text = "Books",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -89,7 +86,7 @@ fun GroupDetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        color = KnotDarkBrown
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -103,7 +100,7 @@ fun GroupDetailScreen(
                 ) {
                     Text(
                         text = "No albums yet.",
-                        color = KnotDarkBrown,
+                        color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -142,11 +139,11 @@ private fun AlbumPill(
             .height(56.dp)
             .border(
                 1.dp,
-                KnotDarkBrown,
+                MaterialTheme.colorScheme.primary,
                 RoundedCornerShape(12.dp)
             )
             .background(
-                KnotSand,
+                MaterialTheme.colorScheme.primaryContainer,
                 RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick),
@@ -154,7 +151,7 @@ private fun AlbumPill(
     ) {
         Text(
             text = label,
-            color = KnotDarkBrown,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.bodyLarge
         )
     }

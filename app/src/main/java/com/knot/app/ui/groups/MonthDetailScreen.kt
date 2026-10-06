@@ -43,9 +43,6 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import com.knot.app.R
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
 import com.knot.app.model.MemoryType
 import android.media.MediaPlayer
@@ -92,7 +89,7 @@ fun MonthDetailScreen(
     val currentActivity = uiState.currentActivity
 
     Scaffold(
-        containerColor = KnotCream,
+        containerColor = MaterialTheme.colorScheme.onPrimary,
         topBar = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -105,14 +102,14 @@ fun MonthDetailScreen(
                     Icon(
                         painter = painterResource(R.drawable.left_arrow),
                         contentDescription = "Back to albums",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Text(
                     text = "${java.text.DateFormatSymbols().months[month - 1]} $year",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -138,7 +135,7 @@ fun MonthDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "Previous activity",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -148,7 +145,7 @@ fun MonthDetailScreen(
                             .format(Date(it.dateMillis))
                     } ?: "No activities yet",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .weight(1f)
@@ -162,7 +159,7 @@ fun MonthDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "Next activity",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -172,13 +169,13 @@ fun MonthDetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(KnotSand, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
                     .padding(24.dp)
             ) {
                 Text(
                     text = "\u201c${currentActivity?.activityTitle ?: "No activity yet"}\u201d",
                     style = MaterialTheme.typography.titleMedium,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -198,7 +195,7 @@ fun MonthDetailScreen(
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
                             .background(
-                                KnotSand.copy(alpha = 0.4f),
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                                 RoundedCornerShape(12.dp)
                             )
                             .padding(16.dp)
@@ -209,7 +206,7 @@ fun MonthDetailScreen(
                             Text(
                                 text = memory.authorName,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = KnotDarkBrown
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
 
                             Spacer(Modifier.height(8.dp))
@@ -219,7 +216,7 @@ fun MonthDetailScreen(
                                     Text(
                                         text = memory.textContent,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
 
@@ -253,7 +250,7 @@ fun MonthDetailScreen(
                                 Text(
                                     text = "📍 ${memory.locationText}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = KnotDarkBrown
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
 

@@ -30,12 +30,13 @@ data class AccountSettingsUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null,
-    val appTheme: String = "System",
+    val appTheme: String = "Default",
     val textSizeMultiplier: Float = 1.0f,
     val syncStatus: String = "Up to date",
     val storageUsage: Float = 0.45f,
     val syncOverWifi: Boolean = true,
     val showClearCacheDialog: Boolean = false,
+    val showLogoutDialog: Boolean = false,
     val isCameraAllowed: Boolean = false,
     val isMicrophoneAllowed: Boolean = false,
     val isLocationAllowed: Boolean = false,
@@ -78,6 +79,16 @@ class AccountSettingsViewModel(
                 )
             }
         }
+    }
+
+    fun loadPreferences(context: Context) {
+        val prefs = context.getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
+        val savedMultiplier = prefs.getFloat("text_size_multiplier", 1.0f)
+        val savedTheme = prefs.getString("app_theme", "Default") ?: "Default"
+        uiState = uiState.copy(
+            textSizeMultiplier = savedMultiplier,
+            appTheme = savedTheme
+        )
     }
 
     fun refreshAvatarColor() {
@@ -158,8 +169,9 @@ class AccountSettingsViewModel(
             val result = repository.updateDisplayName(name)
             uiState = result.fold(
                 onSuccess = {
-                    refreshAccount()
+                    val updatedAccount = repository.currentUser ?: uiState.account.copy(displayName = name.trim())
                     uiState.copy(
+                        account = updatedAccount,
                         isLoading = false,
                         successMessage = "Name updated successfully!"
                     )
@@ -276,12 +288,22 @@ class AccountSettingsViewModel(
         }
     }
 
-    fun setAppTheme(theme: String) {
+    fun setAppTheme(theme: String, context: Context? = null) {
         uiState = uiState.copy(appTheme = theme)
+        val ctx = context ?: getApplication<Application>()
+        ctx.getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("app_theme", theme)
+            .apply()
     }
 
-    fun setTextSize(multiplier: Float) {
+    fun setTextSize(multiplier: Float, context: Context? = null) {
         uiState = uiState.copy(textSizeMultiplier = multiplier)
+        val ctx = context ?: getApplication<Application>()
+        ctx.getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putFloat("text_size_multiplier", multiplier)
+            .apply()
     }
 
     fun setSyncOverWifi(enabled: Boolean) {
@@ -290,6 +312,10 @@ class AccountSettingsViewModel(
 
     fun setShowClearCacheDialog(show: Boolean) {
         uiState = uiState.copy(showClearCacheDialog = show)
+    }
+
+    fun setShowLogoutDialog(show: Boolean) {
+        uiState = uiState.copy(showLogoutDialog = show)
     }
 
     fun checkPermissions(context: Context) {
@@ -331,6 +357,7 @@ class AccountSettingsViewModel(
     }
 
     fun signOut(onSignedOut: () -> Unit) {
+        uiState = uiState.copy(showLogoutDialog = false)
         stopNearby()
         repository.signOut()
         onSignedOut()

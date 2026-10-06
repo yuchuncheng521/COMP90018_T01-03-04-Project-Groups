@@ -10,15 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.knot.app.R
 import com.knot.app.model.Group
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotInk
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,7 +87,7 @@ fun CreateActivityScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .background(KnotDarkBrown.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
                         .clickable(enabled = uiState.groups.isNotEmpty()) { expanded = true }
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart
@@ -107,9 +103,13 @@ fun CreateActivityScreen(
                                 uiState.groups.isEmpty() -> "No groups yet"
                                 else -> selectedGroup?.name ?: "Select Group"
                             },
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.White)
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 }
                 DropdownMenu(
@@ -137,8 +137,8 @@ fun CreateActivityScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = KnotCream,
-                    focusedContainerColor = KnotCream
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
 
@@ -149,8 +149,8 @@ fun CreateActivityScreen(
                 modifier = Modifier.fillMaxWidth().height(120.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = KnotCream,
-                    focusedContainerColor = KnotCream
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
 
@@ -173,9 +173,9 @@ fun CreateActivityScreen(
                     onClick = onBackClick,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, KnotInk)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
                 ) {
-                    Text("CANCEL", color = KnotInk)
+                    Text("CANCEL", color = MaterialTheme.colorScheme.onSurface)
                 }
                 Button(
                     onClick = {
@@ -184,9 +184,12 @@ fun CreateActivityScreen(
                     enabled = !uiState.isSubmitting,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Text(if (uiState.isSubmitting) "CREATING…" else "CREATE", color = Color.White)
+                    Text(if (uiState.isSubmitting) "CREATING…" else "CREATE")
                 }
             }
         }
