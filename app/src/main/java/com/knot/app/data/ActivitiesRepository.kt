@@ -12,8 +12,8 @@ import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
 import com.knot.app.nearby.NearbyManager
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
-import java.util.UUID
 
 /**
  * Loads the weekly prompts / activities assigned to the current user across all their groups.
@@ -197,65 +197,156 @@ class ActivitiesRepository(
     }
 
     /**
-     * Saves a member's response to an activity. photoPath/videoPath/audioPath are LOCAL
-     * device file paths (from CameraScreen/AudioRecorderScreen) -- each one, if present,
-     * gets uploaded to Storage here and replaced with its real download URL before
-     * anything is written to Firestore. Previously this wrote the raw local path
-     * directly into Firestore, which is meaningless on any other device.
+     * STEP 1 of 2 -- text first. Writes the response document immediately with just the
+     * text (already encrypted by the caller, same as before) and marks the activity
+     * completed. Nothing here waits on a photo/video/audio upload, so a big file can no
+     * longer hold the text hostage. Returns the new response document's id so the media
+     * upload (step 2) can attach to it afterwards.
      *
-     * groupId is required now (not previously passed) specifically so the Storage
-     * security rule can check group membership directly on this path, without an
-     * extra lookup through the activity document.
+     * mediaStatus tells readers where the media is: "none", "uploading", "done" or "failed".
+     *
+     * The write is capped at 5s so a missing connection can't leave the screen spinning.
+     * As far as I know Firestore keeps an unconfirmed write queued on the device and sends
+     * it later, so a timeout here means "not confirmed yet", not "lost". Real errors
+     * (e.g. permission denied) still throw.
      */
     suspend fun saveActivityResponse(
-        context: Context,
         activityId: String,
         groupId: String,
         text: String,
-        photoPath: String?,
-        videoPath: String?,
-        audioPath: String?,
+        hasMedia: Boolean,
         location: String?
-    ): Result<Unit> = runCatching {
+    ): Result<String> = runCatching {
         val uid = auth.currentUser?.uid ?: error("Not logged in")
 
-        val photoUrl = photoPath?.let { uploadFile(it, groupId, activityId, "photo") }
-        val videoUrl = videoPath?.let { uploadFile(it, groupId, activityId, "video") }
-        val audioUrl = audioPath?.let { uploadFile(it, groupId, activityId, "audio") }
+        val docRef = firestore.collection("activity_responses").document()
 
-        // Encrypt the Storage download URLs the same way the text response is
-        // encrypted (GroupKeyManager.encryptText only handles String, which a
-        // URL is). Note this encrypts the URL, not the file bytes behind it --
-        // the actual photo/video/audio content in Storage is still only
-        // protected by the Storage security rules, not end-to-end encrypted.
-        val encryptedPhotoUrl = photoUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
-        val encryptedVideoUrl = videoUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
-        val encryptedAudioUrl = audioUrl?.let { GroupKeyManager.encryptText(context, groupId, uid, it) ?: it }
+        withTimeoutOrNull(5_000) {
+            docRef.set(
+                mapOf(
+                    "activityId" to activityId,
+                    "groupId" to groupId,
+                    "userId" to uid,
+                    "text" to text,
+                    "location" to location,
+                    "mediaStatus" to if (hasMedia) "uploading" else "none",
+                    "timestamp" to FieldValue.serverTimestamp()
+                )
+            ).await()
 
-        val response = mapOf(
-            "activityId" to activityId,
-            "groupId" to groupId,
-            "userId" to uid,
-            "text" to text,
-            "photoUrl" to encryptedPhotoUrl,
-            "videoUrl" to encryptedVideoUrl,
-            "audioUrl" to encryptedAudioUrl,
-            "location" to location,
-            "timestamp" to FieldValue.serverTimestamp()
-        )
-        firestore.collection("activity_responses").add(response).await()
+            // After saving response, mark activity as completed
+            updateActivityStatus(activityId, ActivityStatus.COMPLETED).getOrThrow()
+        }
 
-        // After saving response, mark activity as completed
-        updateActivityStatus(activityId, ActivityStatus.COMPLETED).getOrThrow()
+        docRef.id
     }
 
-    private suspend fun uploadFile(localPath: String, groupId: String, activityId: String, kind: String): String {
+    /**
+     * STEP 2 of 2 -- media afterwards, smallest file first, one at a time. Each file's URL
+     * is patched onto the response as soon as it finishes, so a small photo shows up
+     * without waiting for a big video.
+     *
+     * Encryption is kept exactly as before: GroupKeyManager.encryptText only handles
+     * String, so it's the Storage download URLs that get encrypted, not the file bytes
+     * behind them. The actual photo/video/audio content in Storage is still only protected
+     * by the Storage security rules, not end-to-end encrypted. If encryption returns null
+     * the plain URL is stored, same fallback as the old code.
+     *
+     * Meant to be called from UploadResponseMediaWorker, not directly from the UI.
+     */
+    suspend fun uploadResponseMedia(
+        context: Context,
+        responseId: String,
+        groupId: String,
+        activityId: String,
+        photoPath: String?,
+        videoPath: String?,
+        audioPath: String?
+    ) {
+        val uid = auth.currentUser?.uid ?: error("Not logged in")
+
+        val files = listOf("photo" to photoPath, "video" to videoPath, "audio" to audioPath)
+            .mapNotNull { (kind, path) -> path?.let { Triple(kind, it, File(it).length()) } }
+            .sortedBy { it.third }
+
+        val docRef = firestore.collection("activity_responses").document(responseId)
+        for ((kind, path, _) in files) {
+            val url = uploadFile(path, groupId, activityId, kind, responseId)
+            val stored = GroupKeyManager.encryptText(context, groupId, uid, url) ?: url
+            docRef.update("${kind}Url", stored).await()
+        }
+        docRef.update("mediaStatus", "done").await()
+    }
+
+    suspend fun markMediaFailed(responseId: String) {
+        firestore.collection("activity_responses").document(responseId)
+            .update("mediaStatus", "failed")
+            .await()
+    }
+
+    /**
+     * Edits ONLY the text of a response. Re-encrypts it the same way submit does.
+     * Media can't be changed after posting -- the Firestore rules enforce that too.
+     */
+    suspend fun editResponseText(
+        context: Context,
+        responseId: String,
+        groupId: String,
+        newText: String
+    ): Result<Unit> = runCatching {
+        val uid = auth.currentUser?.uid ?: error("Not logged in")
+        val trimmed = newText.trim()
+        val stored =
+            if (trimmed.isNotBlank()) GroupKeyManager.encryptText(context, groupId, uid, trimmed) ?: trimmed
+            else trimmed
+
+        firestore.collection("activity_responses").document(responseId)
+            .update("text", stored)
+            .await()
+    }
+
+    /**
+     * Deletes a response and its uploaded photo/video/audio. The Firestore document goes
+     * first (only the author is allowed to), then the files are removed best-effort.
+     * Files are found by name -- uploads are named "<kind>_<responseId>.<ext>" -- so
+     * responses uploaded before this change leave their files behind in Storage.
+     */
+    suspend fun deleteResponse(responseId: String): Result<Unit> = runCatching {
+        val docRef = firestore.collection("activity_responses").document(responseId)
+        val doc = docRef.get().await()
+        val groupId = doc.getString("groupId").orEmpty()
+        val activityId = doc.getString("activityId").orEmpty()
+
+        docRef.delete().await()
+
+        if (groupId.isNotBlank() && activityId.isNotBlank()) {
+            runCatching {
+                storage.reference
+                    .child("activity_responses")
+                    .child(groupId)
+                    .child(activityId)
+                    .listAll()
+                    .await()
+                    .items
+                    .filter { it.name.contains(responseId) }
+                    .forEach { it.delete().await() }
+            }
+        }
+    }
+
+    private suspend fun uploadFile(
+        localPath: String,
+        groupId: String,
+        activityId: String,
+        kind: String,
+        responseId: String
+    ): String {
         val file = File(localPath)
         val storageRef = storage.reference
             .child("activity_responses")
             .child(groupId)
             .child(activityId)
-            .child("${kind}_${UUID.randomUUID()}.${file.extension}")
+            .child("${kind}_${responseId}.${file.extension}")
 
         storageRef.putFile(Uri.fromFile(file)).await()
         return storageRef.downloadUrl.await().toString()
