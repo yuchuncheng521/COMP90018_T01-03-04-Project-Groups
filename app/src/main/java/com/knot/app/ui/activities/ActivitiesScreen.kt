@@ -56,8 +56,6 @@ import com.knot.app.permissions.PermissionManager
 import com.knot.app.ui.audio.AudioRecorderScreen
 import com.knot.app.ui.camera.CameraScreen
 import com.knot.app.ui.components.P2PAlertBanner
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -244,8 +242,8 @@ fun ActivitiesScreen(
                         onClick = { /* Already on Quests/Activities */ },
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = KnotDarkBrown,
-                            contentColor = KnotCream
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(24.dp)
                     ) {
@@ -255,10 +253,10 @@ fun ActivitiesScreen(
                         onClick = onCreateClick,
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                            contentColor = KnotDarkBrown
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(24.dp),
-                        border = androidx.compose.foundation.BorderStroke(2.dp, KnotDarkBrown)
+                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                     ) {
                         Text("CREATE", fontWeight = FontWeight.Bold)
                     }

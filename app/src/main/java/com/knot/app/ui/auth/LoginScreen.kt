@@ -43,8 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.model.UserAccount
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotTheme
 
 
@@ -100,7 +98,7 @@ private fun LoginScreenPreview() {
                     fontFamily = JudsonFontFamily,
                     fontSize = 34.sp,
                     lineHeight = 34.sp,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
 

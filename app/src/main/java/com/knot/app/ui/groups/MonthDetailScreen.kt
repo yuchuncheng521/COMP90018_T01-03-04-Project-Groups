@@ -1,6 +1,10 @@
 package com.knot.app.ui.groups
 
+import android.media.MediaPlayer
+import android.net.Uri
+import android.widget.MediaController
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -31,6 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,16 +51,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.knot.app.R
 import com.knot.app.model.Memory
 import com.knot.app.model.MemoryType
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
-import com.knot.app.ui.theme.KnotSand
 import com.knot.app.ui.theme.KnotTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @Preview(showBackground = true)
@@ -100,10 +107,10 @@ fun MonthDetailScreen(
         }
     }
 
-    val currentWeek = uiState.currentWeek
+    val currentActivity = uiState.currentActivity
 
     Scaffold(
-        containerColor = KnotCream,
+        containerColor = MaterialTheme.colorScheme.onPrimary,
         topBar = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -116,14 +123,14 @@ fun MonthDetailScreen(
                     Icon(
                         painter = painterResource(R.drawable.left_arrow),
                         contentDescription = "Back to albums",
-                        tint = KnotDarkBrown
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Text(
                     text = "${java.text.DateFormatSymbols().months[month - 1]} $year",
                     fontFamily = JudsonFontFamily,
                     fontSize = 28.sp,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -143,29 +150,37 @@ fun MonthDetailScreen(
                     .padding(vertical = 8.dp)
             ) {
                 IconButton(
-                    onClick = { viewModel.goToPreviousWeek() },
-                    enabled = uiState.currentWeekIndex > 0
+                    onClick = { viewModel.goToPreviousActivity() },
+                    enabled = uiState.currentActivityIndex > 0
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "Previous week",
-                        tint = KnotDarkBrown
+                        contentDescription = "Previous activity",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
+
                 Text(
-                    text = currentWeek?.weekLabel ?: "No responses yet",
+                    text = currentActivity?.let {
+                        SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
+                            .format(Date(it.dateMillis))
+                    } ?: "No activities yet",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = KnotDarkBrown,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
                 )
+
                 IconButton(
-                    onClick = { viewModel.goToNextWeek() },
-                    enabled = uiState.currentWeekIndex < uiState.weeks.lastIndex
+                    onClick = { viewModel.goToNextActivity() },
+                    enabled = uiState.currentActivityIndex < uiState.activities.lastIndex
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Next week",
-                        tint = KnotDarkBrown
+                        contentDescription = "Next activity",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -175,13 +190,13 @@ fun MonthDetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(KnotSand, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
                     .padding(24.dp)
             ) {
                 Text(
-                    text = "\u201c${currentWeek?.questionText ?: "No prompt answered this week"}\u201d",
+                    text = "\u201c${currentActivity?.activityTitle ?: "No activity yet"}\u201d",
                     style = MaterialTheme.typography.titleMedium,
-                    color = KnotDarkBrown,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -195,7 +210,7 @@ fun MonthDetailScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                items(currentWeek?.memories ?: emptyList(), key = { it.id }) { memory ->
+                items(currentActivity?.memories ?: emptyList(), key = { it.id }) { memory ->
                     val isMine = memory.authorId == viewModel.currentUserId
                     var menuExpanded by remember(memory.id) { mutableStateOf(false) }
 
@@ -204,7 +219,7 @@ fun MonthDetailScreen(
                             .fillMaxWidth()
                             .heightIn(min = 100.dp)
                             .background(
-                                KnotSand.copy(alpha = 0.4f),
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                                 RoundedCornerShape(12.dp)
                             )
                     ) {
@@ -216,7 +231,7 @@ fun MonthDetailScreen(
                             Text(
                                 text = memory.authorName,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = KnotDarkBrown,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(end = if (isMine) 40.dp else 0.dp)
                             )
 
@@ -227,7 +242,7 @@ fun MonthDetailScreen(
                                     Text(
                                         text = memory.textContent,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
 
@@ -243,21 +258,28 @@ fun MonthDetailScreen(
                                 }
 
                                 MemoryType.AUDIO -> {
-                                    Text(
-                                        text = "Audio response",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                    AudioResponsePlayer(
+                                        audioUrl = memory.contentUrl
                                     )
                                 }
 
                                 MemoryType.VIDEO -> {
-                                    Text(
-                                        text = "Video response",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = KnotDarkBrown
+                                    VideoResponsePlayer(
+                                        videoUrl = memory.contentUrl
                                     )
                                 }
                             }
+
+                            if (memory.locationText.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+
+                                Text(
+                                    text = "📍 ${memory.locationText}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
                         }
 
                         // Only the author sees the menu, pinned to the card's top-right corner
@@ -360,4 +382,71 @@ fun MonthDetailScreen(
             }
         )
     }
+}
+
+@Composable
+private fun AudioResponsePlayer(audioUrl: String) {
+    val mediaPlayer = remember(audioUrl) {
+        MediaPlayer().apply {
+            setDataSource(audioUrl)
+            prepareAsync()
+        }
+    }
+
+    var isPlaying by remember { mutableStateOf(false) }
+    var isPrepared by remember { mutableStateOf(false) }
+
+    DisposableEffect(mediaPlayer) {
+        mediaPlayer.setOnPreparedListener {
+            isPrepared = true
+        }
+
+        mediaPlayer.setOnCompletionListener {
+            isPlaying = false
+        }
+
+        onDispose {
+            mediaPlayer.release()
+        }
+    }
+
+    Button(
+        onClick = {
+            if (!isPrepared) return@Button
+
+            if (isPlaying) {
+                mediaPlayer.pause()
+                isPlaying = false
+            } else {
+                mediaPlayer.start()
+                isPlaying = true
+            }
+        }
+    ) {
+        Text(
+            if (isPlaying) {
+                "Pause Audio"
+            } else {
+                "Play Audio"
+            }
+        )
+    }
+}
+
+@Composable
+private fun VideoResponsePlayer(videoUrl: String) {
+    AndroidView(
+        factory = { context ->
+            VideoView(context).apply {
+                val mediaController = MediaController(context)
+                mediaController.setAnchorView(this)
+
+                setMediaController(mediaController)
+                setVideoURI(Uri.parse(videoUrl))
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+    )
 }

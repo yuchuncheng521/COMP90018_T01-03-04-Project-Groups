@@ -10,21 +10,25 @@ import com.google.firebase.auth.FirebaseAuth
 import com.knot.app.data.ActivitiesRepository
 import com.knot.app.data.TimelineRepository
 import com.knot.app.model.Memory
-import com.knot.app.ui.timeline.WeekBucket
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
+
+data class ActivityBucket(
+    val activityId: String,
+    val activityTitle: String,
+    val dateMillis: Long,
+    val memories: List<Memory>
+)
 
 data class MonthDetailUiState(
     val isLoading: Boolean = true,
-    val weeks: List<WeekBucket> = emptyList(),
-    val currentWeekIndex: Int = 0,
+    val activities: List<ActivityBucket> = emptyList(),
+    val currentActivityIndex: Int = 0,
     val errorMessage: String? = null
 ) {
-    val currentWeek: WeekBucket?
-        get() = weeks.getOrNull(currentWeekIndex)
+    val currentActivity: ActivityBucket?
+        get() = activities.getOrNull(currentActivityIndex)
 }
 
 class MonthDetailViewModel(
@@ -43,7 +47,7 @@ class MonthDetailViewModel(
         get() = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
 
     /**
-     * Starts listening to this group's responses. The screen now updates by itself when
+     * Starts listening to this group's responses. The screen updates by itself when
      * anything changes (your edits/deletes, a photo finishing its background upload,
      * other members' posts) -- no reload needed.
      */
@@ -61,67 +65,70 @@ class MonthDetailViewModel(
             repository.observeTimelineForGroup(groupId).collect { allMemories ->
                 val memories = allMemories.filter { memory ->
                     val calendar = Calendar.getInstance().apply {
-                        timeInMillis = memory.createdAt
+                        timeInMillis = memory.activityCreatedAt
                     }
 
                     calendar.get(Calendar.YEAR) == year &&
                             calendar.get(Calendar.MONTH) + 1 == month
                 }
 
-                val weeks = buildWeeks(memories)
-                val lastIndex = (weeks.size - 1).coerceAtLeast(0)
+                val activities = memories
+                    .groupBy { it.activityId }
+                    .map { (activityId, activityMemories) ->
+                        ActivityBucket(
+                            activityId = activityId,
+                            activityTitle = activityMemories
+                                .firstOrNull { it.activityTitle.isNotBlank() }
+                                ?.activityTitle
+                                ?: "Untitled activity",
+                            dateMillis = activityMemories.first().activityCreatedAt,
+                            memories = activityMemories.sortedBy { it.createdAt }
+                        )
+                    }
+                    .sortedBy { it.dateMillis }
 
-                // First load jumps to the latest week; after that, stay on the week
-                // you're looking at when new data arrives.
+                val lastIndex = (activities.size - 1).coerceAtLeast(0)
+
+                // First load jumps to the latest activity. After that, stay on the activity
+                // you're looking at when new data arrives (found by id, so a new activity
+                // appearing earlier in the list doesn't move you to a different one).
+                val previousActivityId = uiState.currentActivity?.activityId
                 val index =
-                    if (firstEmission) lastIndex
-                    else uiState.currentWeekIndex.coerceIn(0, lastIndex)
+                    if (firstEmission) {
+                        lastIndex
+                    } else {
+                        activities.indexOfFirst { it.activityId == previousActivityId }
+                            .takeIf { it >= 0 }
+                            ?: uiState.currentActivityIndex.coerceIn(0, lastIndex)
+                    }
                 firstEmission = false
 
                 uiState = MonthDetailUiState(
                     isLoading = false,
-                    weeks = weeks,
-                    currentWeekIndex = index,
+                    activities = activities,
+                    currentActivityIndex = index,
                     errorMessage = uiState.errorMessage
                 )
             }
         }
     }
 
-    private fun buildWeeks(memories: List<Memory>): List<WeekBucket> =
-        memories
-            .sortedBy { it.createdAt }
-            .groupBy { weekStartMillisFor(it.createdAt) }
-            .toSortedMap()
-            .map { (weekStart, weekMemories) ->
+    fun goToPreviousActivity() {
+        val currentIndex = uiState.currentActivityIndex
 
-                val questionText =
-                    weekMemories
-                        .firstOrNull { it.activityTitle.isNotBlank() }
-                        ?.activityTitle
-                        ?: "No prompt answered this week"
-
-                WeekBucket(
-                    weekStartMillis = weekStart,
-                    monthLabel = monthLabelFor(weekStart),
-                    weekLabel = weekLabelFor(weekStart),
-                    questionText = questionText,
-                    memories = weekMemories
-                )
-            }
-
-    fun goToPreviousWeek() {
-        if (uiState.currentWeekIndex > 0) {
+        if (currentIndex > 0) {
             uiState = uiState.copy(
-                currentWeekIndex = uiState.currentWeekIndex - 1
+                currentActivityIndex = currentIndex - 1
             )
         }
     }
 
-    fun goToNextWeek() {
-        if (uiState.currentWeekIndex < uiState.weeks.size - 1) {
+    fun goToNextActivity() {
+        val currentIndex = uiState.currentActivityIndex
+
+        if (currentIndex < uiState.activities.lastIndex) {
             uiState = uiState.copy(
-                currentWeekIndex = uiState.currentWeekIndex + 1
+                currentActivityIndex = currentIndex + 1
             )
         }
     }
@@ -156,46 +163,3 @@ class MonthDetailViewModel(
  */
 private val Memory.responseId: String
     get() = id.substringBeforeLast('_')
-
-private fun weekStartMillisFor(epochMillis: Long): Long {
-    val cal = Calendar.getInstance().apply {
-        timeInMillis = epochMillis
-        firstDayOfWeek = Calendar.MONDAY
-        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }
-
-    return cal.timeInMillis
-}
-
-private fun monthLabelFor(weekStartMillis: Long): String =
-    SimpleDateFormat(
-        "MMMM",
-        Locale.getDefault()
-    ).format(weekStartMillis)
-
-private fun weekLabelFor(weekStartMillis: Long): String {
-    val cal = Calendar.getInstance().apply {
-        timeInMillis = weekStartMillis
-    }
-
-    val weekOfMonth = cal.get(Calendar.WEEK_OF_MONTH)
-
-    val start = SimpleDateFormat(
-        "MMM d",
-        Locale.getDefault()
-    ).format(weekStartMillis)
-
-    val end = SimpleDateFormat(
-        "MMM d",
-        Locale.getDefault()
-    ).format(
-        weekStartMillis +
-                6L * 24 * 60 * 60 * 1000
-    )
-
-    return "Week $weekOfMonth · $start–$end"
-}

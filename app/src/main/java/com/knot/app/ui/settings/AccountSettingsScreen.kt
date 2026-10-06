@@ -70,9 +70,10 @@ import androidx.core.content.ContextCompat
 import com.knot.app.R
 import com.knot.app.permissions.PermissionManager
 import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotGreen
+import com.knot.app.ui.theme.KnotGreenDark
 import com.knot.app.ui.theme.KnotRed
+import com.knot.app.ui.theme.KnotRedDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +87,7 @@ fun AccountSettingsScreen(
     val uiState = viewModel.uiState
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val isDark = MaterialTheme.colorScheme.background != KnotCream
 
     // TODO: confirm with whoever wrote checkPermissions() whether this overlaps with
     // the defensive checks below — kept both since checkPermissions() likely feeds the
@@ -94,9 +96,7 @@ fun AccountSettingsScreen(
     // AccountSettingsViewModel.kt.
     LaunchedEffect(Unit) {
         viewModel.checkPermissions(context)
-    }
-
-    LaunchedEffect(Unit) {
+        viewModel.refreshAccount()
         viewModel.refreshAvatarColor()
     }
 
@@ -182,22 +182,6 @@ fun AccountSettingsScreen(
             Toast.makeText(
                 context,
                 "Notification permission is required for weekly prompt reminders.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted =
-            permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        viewModel.setShareLocationWithMemories(granted)
-        if (!granted) {
-            Toast.makeText(
-                context,
-                "Location permission is required to attach location to memories.",
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -365,37 +349,17 @@ fun AccountSettingsScreen(
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
             item { SectionLabel("PRIVACY") }
             item {
-                // TODO: valueColor is hardcoded to always KnotGreen (if (true) ...) —
-                // this was already like this before the merge, not something either
-                // branch introduced, but worth fixing so "Enabled" reflects real state.
+                // TODO: check if e2e is enabled, if (true) green else red
+                val greenColor = if (isDark) KnotGreenDark else KnotGreen
+                val redColor = if (isDark) KnotRedDark else KnotRed
+
                 SettingsInfoRow(
                     icon = Icons.Filled.Lock,
                     title = "End-to-end encryption",
                     subtitle = "Only your circle can read this content",
                     value = "Enabled",
-                    valueColor = KnotGreen
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    icon = Icons.Filled.LocationOn,
-                    title = "Attach location to memories",
-                    subtitle = "Store where a memory happened along with the date",
-                    checked = uiState.shareLocationWithMemories,
-                    onCheckedChange = { enabled ->
-                        if (!enabled) {
-                            viewModel.setShareLocationWithMemories(false)
-                        } else if (PermissionManager.hasLocationPermission(context)) {
-                            viewModel.setShareLocationWithMemories(true)
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        }
-                    }
+                    valueColor = greenColor
+                        //if (isE2eeEnabled) greenColor else redColor
                 )
             }
 
@@ -437,19 +401,14 @@ fun AccountSettingsScreen(
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
             item { SectionLabel("CONNECTIVITY & STORAGE") }
             item {
+                val greenColor = if (isDark) KnotGreenDark else KnotGreen
+                val redColor = if (isDark) KnotRedDark else KnotRed
+
                 SettingsInfoRow(
                     icon = Icons.Filled.Sync,
                     title = "Sync Status",
                     value = uiState.syncStatus,
-                    valueColor = if (uiState.syncStatus == "Up to date") KnotGreen else KnotRed
-                )
-            }
-            item {
-                SettingsProgressRow(
-                    icon = Icons.Filled.CloudQueue,
-                    title = "Cloud Storage Usage",
-                    progress = uiState.storageUsage,
-                    subtitle = "${(uiState.storageUsage * 100).toInt()}% of 5GB used"
+                    valueColor = if (uiState.syncStatus == "Up to date") greenColor else redColor
                 )
             }
             item {
@@ -477,11 +436,11 @@ fun AccountSettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
-                        onClick = { viewModel.signOut(onSignedOut) },
+                        onClick = { viewModel.setShowLogoutDialog(true) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = KnotDarkBrown,
-                            contentColor = KnotCream
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(24.dp)
                     ) {
@@ -517,11 +476,29 @@ fun AccountSettingsScreen(
             text = { Text("This will delete temporary files stored on your device. Your account data in the cloud will not be affected.") },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearLocalCache(context) }) {
-                    Text("Clear", color = KnotDarkBrown)
+                    Text("Clear", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.setShowClearCacheDialog(false) }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (uiState.showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowLogoutDialog(false) },
+            title = { Text("Log Out") },
+            text = { Text("Are you sure you want to log out of your account?") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.signOut(onSignedOut) }) {
+                    Text("Log Out", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowLogoutDialog(false) }) {
                     Text("Cancel")
                 }
             }
@@ -585,11 +562,15 @@ private fun SettingsStatusRow(
             Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
+        val isDark = MaterialTheme.colorScheme.background != KnotCream
+        val greenColor = if (isDark) KnotGreenDark else KnotGreen
+        val redColor = if (isDark) KnotRedDark else KnotRed
+
         Text(
             text = if (isAllowed) "Allowed" else "Not allowed",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isAllowed) KnotGreen else KnotRed
+            color = if (isAllowed) greenColor else redColor
         )
     }
 }
@@ -623,8 +604,8 @@ private fun SettingsProgressRow(
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(8.dp),
-                color = KnotDarkBrown,
-                trackColor = KnotDarkBrown.copy(alpha = 0.1f),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
             Text(text = subtitle, style = MaterialTheme.typography.bodySmall)

@@ -38,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -48,7 +49,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,8 +60,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.model.Group
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotDarkBrown
 import com.knot.app.ui.theme.KnotTheme
 
 
@@ -98,13 +96,13 @@ fun GroupsScreen(
     }
 
     Scaffold(
-        containerColor = KnotCream,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text("Groups", fontSize = 38.sp) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = KnotCream,
-                    scrolledContainerColor = KnotCream
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -112,7 +110,10 @@ fun GroupsScreen(
         floatingActionButton = {
             Button(
                 onClick = { viewModel.openJoinOrCreateSheet(JoinOrCreateMode.CREATE) },
-                colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown, contentColor = KnotCream),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
                 modifier = Modifier.width(360.dp).padding(horizontal = 24.dp).height(52.dp)
             ) {
@@ -502,6 +503,9 @@ private fun JoinOrCreateDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text(if (mode == JoinOrCreateMode.CREATE) "Create a group" else "Join a group") },
         text = {
             Column {
@@ -509,12 +513,24 @@ private fun JoinOrCreateDialog(
                     SegmentedButton(
                         selected = mode == JoinOrCreateMode.CREATE,
                         onClick = { onModeChange(JoinOrCreateMode.CREATE) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                            inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     ) { Text("Create") }
                     SegmentedButton(
                         selected = mode == JoinOrCreateMode.JOIN,
                         onClick = { onModeChange(JoinOrCreateMode.JOIN) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                            inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     ) { Text("Join") }
                 }
 
@@ -523,7 +539,13 @@ private fun JoinOrCreateDialog(
                     onValueChange = { text = it },
                     label = { Text(if (mode == JoinOrCreateMode.CREATE) "Group name" else "Invite code") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
                 )
 
                 errorMessage?.let {
@@ -542,14 +564,17 @@ private fun JoinOrCreateDialog(
                 onClick = { if (mode == JoinOrCreateMode.CREATE) onCreate(text) else onJoin(text) }
             ) {
                 if (isSubmitting) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.primary)
                 } else {
-                    Text(if (mode == JoinOrCreateMode.CREATE) "Create" else "Join")
+                    Text(
+                        text = if (mode == JoinOrCreateMode.CREATE) "Create" else "Join",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
         }
     )
 }

@@ -32,13 +32,10 @@ import com.knot.app.ui.settings.AccountSettingsViewModel
 import com.knot.app.ui.settings.AppPreferencesScreen
 import com.knot.app.ui.settings.DeleteAccountScreen
 import com.knot.app.ui.settings.EditProfileScreen
-import com.knot.app.ui.timeline.TimelineScreen
-import com.knot.app.ui.timeline.TimelineViewModel
-import com.knot.app.ui.groups.GroupDetailViewModel
 
 
 @Composable
-fun KnotNavHost() {
+fun KnotNavHost(settingsViewModel: AccountSettingsViewModel = viewModel()) {
     val navController = rememberNavController()
 
     val startDestination = if (AuthRepository().isLoggedIn) RootGraph.MAIN else RootGraph.AUTH
@@ -59,6 +56,7 @@ fun KnotNavHost() {
         // ---- Main app flow: Groups / Activities / Account, with bottom nav ----
         composable(RootGraph.MAIN) {
             MainNavHost(
+                settingsViewModel = settingsViewModel,
                 onSignedOut = {
                     navController.navigate(RootGraph.AUTH) {
                         popUpTo(RootGraph.MAIN) { inclusive = true }
@@ -109,7 +107,10 @@ private fun AuthNavHost(onAuthenticated: () -> Unit) {
 }
 
 @Composable
-private fun MainNavHost(onSignedOut: () -> Unit) {
+private fun MainNavHost(
+    settingsViewModel: AccountSettingsViewModel = viewModel(),
+    onSignedOut: () -> Unit
+) {
     val mainNavController: NavHostController = rememberNavController()
 
     Scaffold(
@@ -149,24 +150,6 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
                             "monthDetail/${groupId}/${album.year}/${album.month}"
                         )
                     }
-                )
-            }
-
-            // ---- Shared timeline (chronological feed) for one group ----
-            composable(
-                route = TimelineScreenRoute.ROUTE_PATTERN,
-                arguments = listOf(
-                    navArgument("groupId") { type = NavType.StringType },
-                    navArgument("groupName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val timelineViewModel: TimelineViewModel = viewModel()
-
-                TimelineScreen(
-                    groupId = backStackEntry.arguments?.getString("groupId").orEmpty(),
-                    groupName = backStackEntry.arguments?.getString("groupName").orEmpty(),
-                    viewModel = timelineViewModel,
-                    onBackClick = { mainNavController.popBackStack() }
                 )
             }
 
@@ -238,8 +221,6 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             }
 
             composable(MainScreen.Settings.route) {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
-
                 AccountSettingsScreen(
                     viewModel = settingsViewModel,
                     onSignedOut = onSignedOut,
@@ -250,8 +231,6 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             }
 
             composable("editProfile") {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
-
                 EditProfileScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() }
@@ -259,8 +238,6 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             }
 
             composable("appPreferences") {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
-
                 AppPreferencesScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() }
@@ -268,8 +245,6 @@ private fun MainNavHost(onSignedOut: () -> Unit) {
             }
 
             composable("deleteAccount") {
-                val settingsViewModel: AccountSettingsViewModel = viewModel()
-
                 DeleteAccountScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() },

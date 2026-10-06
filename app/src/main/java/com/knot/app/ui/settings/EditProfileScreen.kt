@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -16,10 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.R
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotInk
-import com.knot.app.ui.theme.KnotDarkBrown
-import androidx.compose.foundation.shape.CircleShape
 import com.knot.app.ui.theme.KnotClay
 import com.knot.app.ui.theme.KnotClayDark
 import com.knot.app.ui.theme.KnotSage
@@ -142,8 +139,8 @@ fun EditProfileScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = KnotCream,
-                        unfocusedContainerColor = KnotCream
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
                     )
                 )
 
@@ -155,8 +152,8 @@ fun EditProfileScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = KnotCream,
-                        unfocusedContainerColor = KnotCream
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
                     )
                 )
 
@@ -178,8 +175,8 @@ fun EditProfileScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = KnotCream,
-                        unfocusedContainerColor = KnotCream
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
                     )
                 )
 
@@ -195,12 +192,12 @@ fun EditProfileScreen(
                             .weight(1f)
                             .height(56.dp),
                         shape = RoundedCornerShape(28.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, KnotInk)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)
                     ) {
                         Text(
                             "Cancel",
                             fontSize = 18.sp,
-                            color = KnotInk
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -214,10 +211,13 @@ fun EditProfileScreen(
                             .weight(1f)
                             .height(56.dp),
                         shape = RoundedCornerShape(28.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = KnotDarkBrown)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Text(
-                            "Save Changes",
+                            "Save",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -230,7 +230,7 @@ fun EditProfileScreen(
                     modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = KnotDarkBrown)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

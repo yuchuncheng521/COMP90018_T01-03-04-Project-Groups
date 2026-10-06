@@ -35,11 +35,3 @@ object GroupDetailScreenRoute {
     const val ROUTE_PATTERN = "groupDetail/{groupId}/{groupName}"
     fun route(groupId: String, groupName: String) = "groupDetail/$groupId/$groupName"
 }
-
-/**
- * A group's shared timeline for one month (the weekly spread). Reached by tapping a month "album" on GroupDetailScreen.
- */
-object TimelineScreenRoute {
-    const val ROUTE_PATTERN = "timeline/{groupId}/{groupName}"
-    fun route(groupId: String, groupName: String) = "timeline/$groupId/$groupName"
-}
