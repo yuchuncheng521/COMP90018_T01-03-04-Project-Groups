@@ -7,6 +7,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.knot.app.model.Group
 import kotlinx.coroutines.tasks.await
 import kotlin.random.Random
+import android.util.Log
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 /**
  * Fetches the groups the signed-in user belongs to, and lets them create a new group or join an existing one using an invite code.
@@ -226,6 +230,29 @@ class GroupsRepository(
             inviteCode = getString("inviteCode") ?: ""
         )
     }
+    /** Live list of the signed-in user's groups. Emits again on every change. */
+    fun observeGroups(): Flow<List<Group>> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            // Not signed in (the dev shortcut): keep the sample data, as getGroups() does.
+            trySend(sampleGroups)
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val registration = firestore.collection("groups")
+            .whereArrayContains("memberIds", uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("GroupsRepository", "Groups listener failed", error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    trySend(snapshot.documents.mapNotNull { it.toGroup() })
+                }
+            }
+        awaitClose { registration.remove() }
+    }
 
     companion object {
         /** Placeholder data shown when there's no Firebase project configured yet, or no groups exist. */
@@ -235,4 +262,5 @@ class GroupsRepository(
             Group(id = "sample-3", name = "Sarah & Qin Yu", memberCount = 2, lastActivitySummary = "You were both near Union House earlier today", unreadCount = 1)
         )
     }
+
 }
