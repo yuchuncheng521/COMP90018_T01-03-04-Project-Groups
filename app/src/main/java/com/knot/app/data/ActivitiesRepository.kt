@@ -14,6 +14,7 @@ import com.knot.app.nearby.NearbyManager
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import java.util.UUID
 
 /**
  * Loads the weekly prompts / activities assigned to the current user across all their groups.
@@ -192,7 +193,6 @@ class ActivitiesRepository(
                     "dueLabel" to "New",
                     "assignedTo" to memberId,
                     "createdBy" to creatorUid,
-                    "createdAt" to FieldValue.serverTimestamp()
                 )
             )
         }
@@ -277,6 +277,8 @@ class ActivitiesRepository(
             val url = uploadFile(path, groupId, activityId, kind, responseId)
             val stored = GroupKeyManager.encryptText(context, groupId, uid, url) ?: url
             docRef.update("${kind}Url", stored).await()
+            android.util.Log.d("PriorityTest", "$kind ATTACHED ${System.currentTimeMillis()}")
+
         }
         docRef.update("mediaStatus", "done").await()
     }
