@@ -87,6 +87,7 @@ fun AccountSettingsScreen(
     val uiState = viewModel.uiState
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val isDark = MaterialTheme.colorScheme.background != KnotCream
 
     // TODO: confirm with whoever wrote checkPermissions() whether this overlaps with
     // the defensive checks below — kept both since checkPermissions() likely feeds the
@@ -348,15 +349,17 @@ fun AccountSettingsScreen(
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
             item { SectionLabel("PRIVACY") }
             item {
-                // TODO: valueColor is hardcoded to always KnotGreen (if (true) ...) —
-                // this was already like this before the merge, not something either
-                // branch introduced, but worth fixing so "Enabled" reflects real state.
+                // TODO: check if e2e is enabled, if (true) green else red
+                val greenColor = if (isDark) KnotGreenDark else KnotGreen
+                val redColor = if (isDark) KnotRedDark else KnotRed
+
                 SettingsInfoRow(
                     icon = Icons.Filled.Lock,
                     title = "End-to-end encryption",
                     subtitle = "Only your circle can read this content",
                     value = "Enabled",
-                    valueColor = KnotGreen
+                    valueColor = greenColor
+                        //if (isE2eeEnabled) greenColor else redColor
                 )
             }
 
@@ -398,7 +401,6 @@ fun AccountSettingsScreen(
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
             item { SectionLabel("CONNECTIVITY & STORAGE") }
             item {
-                val isDark = MaterialTheme.colorScheme.background != KnotCream
                 val greenColor = if (isDark) KnotGreenDark else KnotGreen
                 val redColor = if (isDark) KnotRedDark else KnotRed
 

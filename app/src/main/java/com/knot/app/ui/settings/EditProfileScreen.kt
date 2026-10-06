@@ -217,7 +217,7 @@ fun EditProfileScreen(
                         )
                     ) {
                         Text(
-                            "Save Changes",
+                            "Save",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )

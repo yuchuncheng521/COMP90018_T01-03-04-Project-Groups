@@ -73,14 +73,14 @@ fun DeleteAccountScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "Warning: This action is permanent",
-                            color = MaterialTheme.colorScheme.onError,
+                            text = "Warning: This action is permanent",
+                            color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
                             text = "Deleting your account will remove all your data from our database. This cannot be undone.",
-                            color = MaterialTheme.colorScheme.onError,
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -127,11 +127,11 @@ fun DeleteAccountScreen(
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text("Delete Account Permanently", fontWeight = FontWeight.Bold)
+                    Text("Delete Permanently", fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(
@@ -149,7 +149,7 @@ fun DeleteAccountScreen(
                     modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onError)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.error)
                 }
             }
         }
