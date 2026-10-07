@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +32,11 @@ fun AudioRecorderScreen(
     var audioFilePath by remember { mutableStateOf<String?>(null) }
     var recordingFinished by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         if (recordingFinished && audioFilePath != null) {
             Column(
                 modifier = Modifier
@@ -130,6 +136,7 @@ fun AudioRecorderScreen(
                 .padding(16.dp)
         ) {
             Icon(Icons.Default.Close, contentDescription = "Cancel")
+        }
         }
     }
 
