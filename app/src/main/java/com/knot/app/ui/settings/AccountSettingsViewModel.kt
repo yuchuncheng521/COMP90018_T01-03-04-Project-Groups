@@ -87,10 +87,26 @@ class AccountSettingsViewModel(
         val prefs = context.getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
         val savedMultiplier = prefs.getFloat("text_size_multiplier", 1.0f)
         val savedTheme = prefs.getString("app_theme", "Default") ?: "Default"
+        val savedP2pEnabled = prefs.getBoolean("p2p_alerts_enabled", false)
+
         uiState = uiState.copy(
             textSizeMultiplier = savedMultiplier,
-            appTheme = savedTheme
+            appTheme = savedTheme,
+            p2pAlertsEnabled = savedP2pEnabled
         )
+
+        // Swiping the app away can stop the process/service, but it should not
+        // change the user's P2P setting. When the app is opened again, restore
+        // the foreground Nearby service if the saved setting is still enabled
+        // and the required device state is available.
+        if (
+            savedP2pEnabled &&
+            repository.isLoggedIn &&
+            PermissionManager.isBluetoothEnabled(context) &&
+            PermissionManager.hasNearbyPermissions(context)
+        ) {
+            startNearby()
+        }
     }
 
     fun refreshAvatarColor() {
@@ -138,6 +154,12 @@ class AccountSettingsViewModel(
     }
 
     fun setP2pAlertsEnabled(enabled: Boolean) {
+        getApplication<Application>()
+            .getSharedPreferences("knot_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("p2p_alerts_enabled", enabled)
+            .apply()
+
         uiState = uiState.copy(
             p2pAlertsEnabled = enabled
         )
@@ -292,7 +314,7 @@ class AccountSettingsViewModel(
 
     fun signOut(onSignedOut: () -> Unit) {
         uiState = uiState.copy(showLogoutDialog = false)
-        stopNearby()
+        setP2pAlertsEnabled(false)
         repository.signOut()
         onSignedOut()
     }
