@@ -486,6 +486,12 @@ private fun VideoResponsePlayer(videoUrl: String) {
     // was the actual cause of videos being slow to show up, not any one piece of
     // UI. Only the video someone actually taps ever touches the network now.
     var isPlaying by remember(videoUrl) { mutableStateOf(false) }
+    // Tapping play still has to wait for VideoView to buffer enough of the file
+    // to start -- that's a few seconds over the network, same as before, just
+    // now it only happens for the one video someone taps instead of every video
+    // on screen at once. This just covers that wait with a spinner instead of a
+    // blank/black surface.
+    var isPrepared by remember(videoUrl) { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -501,7 +507,10 @@ private fun VideoResponsePlayer(videoUrl: String) {
                         mediaController.setAnchorView(this)
 
                         setMediaController(mediaController)
-                        setOnPreparedListener { start() }
+                        setOnPreparedListener {
+                            isPrepared = true
+                            start()
+                        }
                         setVideoURI(Uri.parse(videoUrl))
                     }
                 },
@@ -509,6 +518,20 @@ private fun VideoResponsePlayer(videoUrl: String) {
                     .fillMaxWidth()
                     .height(220.dp)
             )
+
+            if (!isPrepared) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.25f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
         } else {
             Box(
                 modifier = Modifier
