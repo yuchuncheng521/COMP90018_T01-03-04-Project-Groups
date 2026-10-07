@@ -28,5 +28,6 @@ data class Memory(
     val locationLat: Double? = null,
     val locationLng: Double? = null,
     val locationText: String = "",
-    val createdAt: Long = 0L           // epoch millis -- week/month grouping is derived from this
+    val createdAt: Long = 0L,          // epoch millis -- week/month grouping is derived from this
+    val isUploading: Boolean = false   // true = media still uploading in the background (UploadResponseMediaWorker), contentUrl is not ready yet
 )

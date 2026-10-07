@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -247,26 +249,38 @@ fun MonthDetailScreen(
                                 }
 
                                 MemoryType.PHOTO -> {
-                                    AsyncImage(
-                                        model = memory.contentUrl,
-                                        contentDescription = "Photo by ${memory.authorName}",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(200.dp),
-                                        contentScale = ContentScale.Crop
-                                    )
+                                    if (memory.isUploading) {
+                                        MediaUploadingPlaceholder(label = "Uploading photo…", heightDp = 200)
+                                    } else {
+                                        AsyncImage(
+                                            model = memory.contentUrl,
+                                            contentDescription = "Photo by ${memory.authorName}",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(200.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
                                 }
 
                                 MemoryType.AUDIO -> {
-                                    AudioResponsePlayer(
-                                        audioUrl = memory.contentUrl
-                                    )
+                                    if (memory.isUploading) {
+                                        MediaUploadingPlaceholder(label = "Uploading audio…", heightDp = 64)
+                                    } else {
+                                        AudioResponsePlayer(
+                                            audioUrl = memory.contentUrl
+                                        )
+                                    }
                                 }
 
                                 MemoryType.VIDEO -> {
-                                    VideoResponsePlayer(
-                                        videoUrl = memory.contentUrl
-                                    )
+                                    if (memory.isUploading) {
+                                        MediaUploadingPlaceholder(label = "Uploading video…", heightDp = 220)
+                                    } else {
+                                        VideoResponsePlayer(
+                                            videoUrl = memory.contentUrl
+                                        )
+                                    }
                                 }
                             }
 
@@ -430,6 +444,33 @@ private fun AudioResponsePlayer(audioUrl: String) {
                 "Play Audio"
             }
         )
+    }
+}
+
+/** Shown in place of the real photo/audio/video card while UploadResponseMediaWorker
+ *  is still uploading that file in the background -- the Timeline listener swaps this
+ *  out for the real content automatically once the upload finishes. */
+@Composable
+private fun MediaUploadingPlaceholder(label: String, heightDp: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(heightDp.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(28.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

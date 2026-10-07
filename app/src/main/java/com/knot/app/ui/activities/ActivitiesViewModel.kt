@@ -124,7 +124,9 @@ class ActivitiesViewModel(
                 activityId = persistedActivityId,
                 groupId = groupId,
                 text = textToSave,
-                hasMedia = hasMedia,
+                hasPhoto = photoPath != null,
+                hasVideo = videoPath != null,
+                hasAudio = audioPath != null,
                 location = location
             )
 

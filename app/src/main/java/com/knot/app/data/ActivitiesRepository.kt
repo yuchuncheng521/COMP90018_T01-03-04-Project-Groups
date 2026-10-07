@@ -217,10 +217,13 @@ class ActivitiesRepository(
         activityId: String,
         groupId: String,
         text: String,
-        hasMedia: Boolean,
+        hasPhoto: Boolean,
+        hasVideo: Boolean,
+        hasAudio: Boolean,
         location: String?
     ): Result<String> = runCatching {
         val uid = auth.currentUser?.uid ?: error("Not logged in")
+        val hasMedia = hasPhoto || hasVideo || hasAudio
 
         val docRef = firestore.collection("activity_responses").document()
 
@@ -233,6 +236,13 @@ class ActivitiesRepository(
                     "text" to text,
                     "location" to location,
                     "mediaStatus" to if (hasMedia) "uploading" else "none",
+                    // Recorded up front so the Timeline can show an "uploading" placeholder
+                    // for the right kind(s) while UploadResponseMediaWorker is still working
+                    // -- without this, there'd be no way to tell "a video is coming" from
+                    // "nothing was submitted" until the URL actually lands.
+                    "hasPhoto" to hasPhoto,
+                    "hasVideo" to hasVideo,
+                    "hasAudio" to hasAudio,
                     "timestamp" to FieldValue.serverTimestamp()
                 )
             ).await()
