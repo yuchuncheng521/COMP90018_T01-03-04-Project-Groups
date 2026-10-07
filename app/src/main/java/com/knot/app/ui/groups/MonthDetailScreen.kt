@@ -1,10 +1,13 @@
 package com.knot.app.ui.groups
 
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
 import android.widget.MediaController
 import android.widget.Toast
 import android.widget.VideoView
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -64,6 +68,8 @@ import com.knot.app.ui.theme.KnotTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 @Preview(showBackground = true)
@@ -481,6 +487,25 @@ private fun VideoResponsePlayer(videoUrl: String) {
     // before it has enough of the stream to start playing, which takes a few seconds
     // over the network. Without this, that wait looked like a frozen/blank player.
     var isPrepared by remember(videoUrl) { mutableStateOf(false) }
+    var thumbnail by remember(videoUrl) { mutableStateOf<Bitmap?>(null) }
+
+    // Pulls a frame straight from the already-uploaded video (no extra download
+    // step, no new dependency) so there's a real picture to look at instead of a
+    // black rectangle while VideoView buffers. Best-effort: if this fails for any
+    // reason, the plain loading placeholder below still covers it.
+    LaunchedEffect(videoUrl) {
+        thumbnail = withContext(Dispatchers.IO) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(videoUrl, HashMap<String, String>())
+                retriever.getFrameAtTime(0L)
+            } catch (e: Exception) {
+                null
+            } finally {
+                retriever.release()
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -504,7 +529,31 @@ private fun VideoResponsePlayer(videoUrl: String) {
         )
 
         if (!isPrepared) {
-            MediaUploadingPlaceholder(label = "Loading video…", heightDp = 220)
+            val frame = thumbnail
+            if (frame != null) {
+                Image(
+                    bitmap = frame.asImageBitmap(),
+                    contentDescription = "Video preview",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.25f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            } else {
+                MediaUploadingPlaceholder(label = "Loading video…", heightDp = 220)
+            }
         }
     }
 }
