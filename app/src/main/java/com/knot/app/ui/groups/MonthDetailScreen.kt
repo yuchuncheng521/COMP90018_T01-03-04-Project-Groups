@@ -53,7 +53,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -63,24 +62,10 @@ import com.knot.app.R
 import com.knot.app.model.Memory
 import com.knot.app.model.MemoryType
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
-@Preview(showBackground = true)
-@Composable
-private fun MonthDetailScreenPreview() {
-    KnotTheme {
-        MonthDetailScreen(
-            groupId = "preview-group",
-            year = 2026,
-            month = 8,
-            onBackClick = {}
-        )
-    }
-}
 
 @Composable
 fun MonthDetailScreen(

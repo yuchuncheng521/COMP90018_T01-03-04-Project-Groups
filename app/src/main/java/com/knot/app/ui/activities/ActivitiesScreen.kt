@@ -52,7 +52,6 @@ import com.knot.app.R
 import com.knot.app.location.LocationManager
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
-import com.knot.app.permissions.PermissionManager
 import com.knot.app.ui.audio.AudioRecorderScreen
 import com.knot.app.ui.camera.CameraScreen
 import com.knot.app.ui.components.P2PAlertBanner
@@ -85,34 +84,9 @@ fun ActivitiesScreen(
 
     // Location
     val locationManager = remember { LocationManager(context) }
-
-
     var currentLocationText by remember {
         mutableStateOf<String?>(null)
     }
-
-    //nearby
-    val nearbyPermissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions ->
-
-            val granted =
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
-                            permissions[Manifest.permission.BLUETOOTH_CONNECT] == true &&
-                            permissions[Manifest.permission.BLUETOOTH_ADVERTISE] == true
-                } else {
-                    true
-                }
-
-            if (granted) {
-                viewModel.startNearby("KnotUser")
-
-            }
-        }
-
-
 
     // Reusable function for getting the current location
     fun updateCurrentLocation() {
@@ -126,38 +100,6 @@ fun ActivitiesScreen(
                 } else {
                     "Location unavailable"
                 }
-        }
-    }
-
-    // Camera permission
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            showCamera = true
-        }
-    }
-
-    // Microphone permission
-    val microphonePermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            showAudioRecorder = true
-        }
-    }
-
-    // Location permission
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-
-        val granted =
-            permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                    permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-
-        if (granted) {
-            updateCurrentLocation()
         }
     }
 

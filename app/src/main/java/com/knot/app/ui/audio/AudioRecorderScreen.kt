@@ -1,6 +1,5 @@
 package com.knot.app.ui.audio
 
-import android.content.Context
 import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log

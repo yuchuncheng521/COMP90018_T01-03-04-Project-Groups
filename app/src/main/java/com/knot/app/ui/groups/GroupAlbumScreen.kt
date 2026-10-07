@@ -25,13 +25,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.knot.app.R
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotTheme
 
 @Composable
 fun GroupDetailScreen(
@@ -153,17 +151,6 @@ private fun AlbumPill(
             text = label,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun GroupDetailScreenPreview() {
-    KnotTheme {
-        GroupDetailScreen(
-            groupId = "1",
-            onBackClick = {}
         )
     }
 }

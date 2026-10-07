@@ -64,8 +64,4 @@ class CreateActivityViewModel(
             )
         }
     }
-
-    fun dismissError() {
-        uiState = uiState.copy(errorMessage = null)
-    }
 }

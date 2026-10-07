@@ -31,19 +31,16 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -79,11 +76,6 @@ fun AccountSettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // TODO: confirm with whoever wrote checkPermissions() whether this overlaps with
-    // the defensive checks below — kept both since checkPermissions() likely feeds the
-    // read-only SENSORS & PERMISSIONS status rows further down, a different job from
-    // the toggle-disabling logic in the next effect. Unverified — I haven't seen
-    // AccountSettingsViewModel.kt.
     LaunchedEffect(Unit) {
         viewModel.checkPermissions(context)
         viewModel.refreshAccount()
@@ -118,12 +110,6 @@ fun AccountSettingsScreen(
 
         if (!notificationsAllowed && uiState.notificationsEnabled) {
             viewModel.setNotificationsEnabled(false)
-        }
-
-        if (!PermissionManager.hasLocationPermission(context) &&
-            uiState.shareLocationWithMemories
-        ) {
-            viewModel.setShareLocationWithMemories(false)
         }
     }
 
@@ -221,7 +207,33 @@ fun AccountSettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
             }
 
-            item { SectionLabel("CUSTOMISATION & NOTIFICATIONS") }
+            //item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
+            item { SectionLabel("SYNC & CUSTOMISATION") }
+            item {
+                SettingsClickRow(
+                    icon = Icons.Filled.Brush,
+                    title = "App Preference",
+                    subtitle = "Theme and Text size",
+                    onClick = onAppPreferencesClick
+                )
+            }
+            item {
+                val syncColor = when (uiState.syncStatus) {
+                    "Up to date" -> MaterialTheme.colorScheme.tertiary
+                    "Offline" -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.secondary
+                }
+
+                SettingsInfoRow(
+                    icon = Icons.Filled.Sync,
+                    title = "Sync Status",
+                    value = uiState.syncStatus,
+                    valueColor = syncColor
+                )
+            }
+
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
+            item { SectionLabel("NOTIFICATIONS") }
             item {
                 SettingsSwitchRow(
                     icon = Icons.Filled.Notifications,
@@ -325,14 +337,6 @@ fun AccountSettingsScreen(
                     )
                 }
             }
-            item {
-                SettingsClickRow(
-                    icon = Icons.Filled.Brush,
-                    title = "App Preference",
-                    subtitle = "Theme and Text size",
-                    onClick = onAppPreferencesClick
-                )
-            }
 
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
             item { SectionLabel("SENSORS & PERMISSIONS") }
@@ -369,34 +373,6 @@ fun AccountSettingsScreen(
                 )
             }
 
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
-            item { SectionLabel("CONNECTIVITY & STORAGE") }
-            item {
-                SettingsInfoRow(
-                    icon = Icons.Filled.Sync,
-                    title = "Sync Status",
-                    value = uiState.syncStatus,
-                    valueColor = if (uiState.syncStatus == "Up to date") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    icon = Icons.Filled.Wifi,
-                    title = "Sync over Wi-Fi",
-                    subtitle = "Only sync large files on Wi-Fi to save data",
-                    checked = uiState.syncOverWifi,
-                    onCheckedChange = viewModel::setSyncOverWifi
-                )
-            }
-            item {
-                SettingsClickRow(
-                    icon = Icons.Filled.DeleteSweep,
-                    title = "Clear local cache",
-                    subtitle = "Free up space on your device",
-                    onClick = { viewModel.setShowClearCacheDialog(show = true) }
-                )
-            }
-
             item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
                 Column(
@@ -423,24 +399,6 @@ fun AccountSettingsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
-    }
-
-    if (uiState.showClearCacheDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.setShowClearCacheDialog(false) },
-            title = { Text("Clear Local Cache") },
-            text = { Text("This will delete temporary files stored on your device. Your account data in the cloud will not be affected.") },
-            confirmButton = {
-                TextButton(onClick = { viewModel.clearLocalCache(context) }) {
-                    Text("Clear", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.setShowClearCacheDialog(false) }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 
     if (uiState.showLogoutDialog) {
@@ -524,44 +482,6 @@ private fun SettingsStatusRow(
             fontWeight = FontWeight.Bold,
             color = if (isAllowed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
         )
-    }
-}
-
-@Composable
-private fun SettingsProgressRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    progress: Float,
-    subtitle: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
-            Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
-        }
     }
 }
 

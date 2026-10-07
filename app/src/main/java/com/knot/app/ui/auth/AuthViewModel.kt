@@ -23,9 +23,6 @@ class AuthViewModel @JvmOverloads constructor(
     var uiState by mutableStateOf(AuthUiState(loggedInUser = repository.currentUser))
         private set
 
-    val isLoggedIn: Boolean
-        get() = repository.isLoggedIn
-
     init {
         // Keep the UI in sync automatically if the session expires or the user is signed
         // out elsewhere (token revoked, password changed on another device, etc.).
@@ -95,10 +92,5 @@ class AuthViewModel @JvmOverloads constructor(
 
     fun clearError() {
         uiState = uiState.copy(errorMessage = null)
-    }
-
-    fun signOut() {
-        repository.signOut()
-        uiState = AuthUiState()
     }
 }

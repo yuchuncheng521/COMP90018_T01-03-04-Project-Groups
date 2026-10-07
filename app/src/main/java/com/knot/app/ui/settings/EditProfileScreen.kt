@@ -143,10 +143,6 @@ fun EditProfileScreen(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(8.dp))
-
                 Text(
                     text = "Security",
                     style = MaterialTheme.typography.titleMedium,

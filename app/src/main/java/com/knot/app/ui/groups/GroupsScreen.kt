@@ -56,28 +56,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.model.Group
-import com.knot.app.ui.theme.KnotTheme
-
-
-@Preview(showBackground = true)
-@Composable
-private fun LoadingStatePreview() {
-    KnotTheme {
-        LoadingState(padding = PaddingValues())
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun EmptyGroupsStatePreview() {
-    KnotTheme {
-        EmptyGroupsState(padding = PaddingValues(), onJoinClick = {})
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

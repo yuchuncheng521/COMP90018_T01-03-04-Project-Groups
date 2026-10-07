@@ -15,18 +15,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.knot.app.navigation.MainScreen
 import com.knot.app.ui.theme.KnotBlue
 import com.knot.app.ui.theme.KnotCream
 import com.knot.app.ui.theme.KnotInk
-import com.knot.app.ui.theme.KnotTheme
 
 @Composable
 fun KnotBottomNavBar(navController: NavHostController) {
@@ -79,13 +76,5 @@ fun KnotBottomNavBar(navController: NavHostController) {
                 )
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun KnotBottomNavBarPreview() {
-    KnotTheme {
-        KnotBottomNavBar(navController = rememberNavController())
     }
 }

@@ -54,20 +54,8 @@ class AuthRepository(
         profileDataSource.updateDisplayName(user.uid, trimmedName)
     }
 
-    suspend fun updateEmail(newEmail: String): Result<Unit> = runCatching {
-        authDataSource.updateEmail(newEmail.trim())
-    }
-
     suspend fun updatePassword(newPassword: String): Result<Unit> = runCatching {
         authDataSource.updatePassword(newPassword)
-    }
-
-    suspend fun deleteAccount(email: String, password: String): Result<Unit> = runCatching {
-        val user = currentUser ?: error("Not logged in")
-
-        authDataSource.reauthenticate(email.trim(), password)
-        profileDataSource.deleteProfile(user.uid)
-        authDataSource.deleteAccount()
     }
 
     suspend fun updateAvatarColor(colorHex: String): Result<Unit> = runCatching {

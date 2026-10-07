@@ -16,6 +16,8 @@ import com.knot.app.model.UserAccount
 import com.knot.app.nearby.NearbyForegroundService
 import com.knot.app.notifications.NotificationPreferences
 import com.knot.app.permissions.PermissionManager
+import com.knot.app.util.NetworkMonitor
+import com.knot.app.util.NetworkTransport
 import kotlinx.coroutines.launch
 
 data class AccountSettingsUiState(
@@ -26,23 +28,17 @@ data class AccountSettingsUiState(
     val notificationsEnabled: Boolean = true,
     val weeklyPromptRemindersEnabled: Boolean = false,
     val p2pAlertsEnabled: Boolean = false,
-    val shareLocationWithMemories: Boolean = true,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val appTheme: String = "Default",
     val textSizeMultiplier: Float = 1.0f,
     val syncStatus: String = "Up to date",
-    val storageUsage: Float = 0.45f,
-    val syncOverWifi: Boolean = true,
-    val showClearCacheDialog: Boolean = false,
     val showLogoutDialog: Boolean = false,
     val isCameraAllowed: Boolean = false,
     val isMicrophoneAllowed: Boolean = false,
     val isLocationAllowed: Boolean = false,
     val isBluetoothAllowed: Boolean = false,
-    val isEncryptionActive: Boolean = false,
-    val encryptionStatus: String = "Checking...",
     val nearbyError: String? = null,
     val avatarColorHex: String = "#C97C5D"
 )
@@ -66,9 +62,7 @@ class AccountSettingsViewModel(
             notificationsEnabled =
                 NotificationPreferences.isPushEnabled(application),
             weeklyPromptRemindersEnabled =
-                NotificationPreferences.areWeeklyPromptRemindersEnabled(application),
-            shareLocationWithMemories =
-                LocationPreferences.isAttachLocationEnabled(application)
+                NotificationPreferences.areWeeklyPromptRemindersEnabled(application)
         )
     )
         private set
@@ -79,6 +73,17 @@ class AccountSettingsViewModel(
                 uiState = uiState.copy(
                     nearbyError = message
                 )
+            }
+        }
+
+        viewModelScope.launch {
+            NetworkMonitor.observeNetworkTransport(application).collect { transport ->
+                val status = when (transport) {
+                    NetworkTransport.OFFLINE -> "Offline"
+                    NetworkTransport.WIFI -> "Up to date"
+                    NetworkTransport.CELLULAR -> "Up to date"
+                }
+                uiState = uiState.copy(syncStatus = status)
             }
         }
     }
@@ -169,17 +174,6 @@ class AccountSettingsViewModel(
         }
     }
 
-    fun setShareLocationWithMemories(enabled: Boolean) {
-        LocationPreferences.setAttachLocationEnabled(
-            getApplication(),
-            enabled
-        )
-
-        uiState = uiState.copy(
-            shareLocationWithMemories = enabled
-        )
-    }
-
     fun updateDisplayName(name: String) {
         if (name.isBlank()) return
 
@@ -262,14 +256,6 @@ class AccountSettingsViewModel(
             .apply()
     }
 
-    fun setSyncOverWifi(enabled: Boolean) {
-        uiState = uiState.copy(syncOverWifi = enabled)
-    }
-
-    fun setShowClearCacheDialog(show: Boolean) {
-        uiState = uiState.copy(showClearCacheDialog = show)
-    }
-
     fun setShowLogoutDialog(show: Boolean) {
         uiState = uiState.copy(showLogoutDialog = show)
     }
@@ -281,28 +267,6 @@ class AccountSettingsViewModel(
             isLocationAllowed = PermissionManager.hasLocationPermission(context),
             isBluetoothAllowed = PermissionManager.hasNearbyPermissions(context)
         )
-    }
-
-    fun clearLocalCache(context: Context) {
-        uiState = uiState.copy(
-            isLoading = true,
-            showClearCacheDialog = false
-        )
-
-        viewModelScope.launch {
-            try {
-                context.cacheDir.deleteRecursively()
-                uiState = uiState.copy(
-                    isLoading = false,
-                    successMessage = "Local cache cleared."
-                )
-            } catch (e: Exception) {
-                uiState = uiState.copy(
-                    isLoading = false,
-                    errorMessage = "Failed to clear cache."
-                )
-            }
-        }
     }
 
     fun clearMessages() {

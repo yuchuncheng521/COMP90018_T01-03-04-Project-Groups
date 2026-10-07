@@ -29,17 +29,14 @@ interface FirebaseAuthDataSource {
     suspend fun sendPasswordResetEmail(email: String)
 
     suspend fun updateDisplayName(name: String)
-    suspend fun updateEmail(newEmail: String)
     suspend fun updatePassword(newPassword: String)
     suspend fun reauthenticate(email: String, password: String)
-    suspend fun deleteAccount()
 }
 
 /** Reads/writes the Firestore users/{uid} profile document. */
 interface UserProfileDataSource {
     suspend fun createProfile(user: UserAccount)
     suspend fun updateDisplayName(uid: String, name: String)
-    suspend fun deleteProfile(uid: String)
     suspend fun updateAvatarColor(uid: String, colorHex: String)
     suspend fun getAvatarColor(uid: String): String?
     suspend fun uploadPublicKey(uid: String, publicKeyBase64: String)
@@ -120,15 +117,6 @@ class FirebaseAuthDataSourceImpl(
         }
     }
 
-    override suspend fun updateEmail(newEmail: String) {
-        wrapAuthErrors {
-            val user = requireCurrentFirebaseUser()
-            // Firebase sends a verification email first; the Auth email changes
-            // only after the user confirms the new address.
-            user.verifyBeforeUpdateEmail(newEmail).await()
-        }
-    }
-
     override suspend fun updatePassword(newPassword: String) {
         wrapAuthErrors {
             requireCurrentFirebaseUser().updatePassword(newPassword).await()
@@ -140,12 +128,6 @@ class FirebaseAuthDataSourceImpl(
             val user = requireCurrentFirebaseUser()
             val credential = EmailAuthProvider.getCredential(email, password)
             user.reauthenticate(credential).await()
-        }
-    }
-
-    override suspend fun deleteAccount() {
-        wrapAuthErrors {
-            requireCurrentFirebaseUser().delete().await()
         }
     }
 
@@ -198,13 +180,6 @@ class FirestoreUserProfileDataSource(
         firestore.collection("users")
             .document(uid)
             .update("displayName", name)
-            .await()
-    }
-
-    override suspend fun deleteProfile(uid: String) {
-        firestore.collection("users")
-            .document(uid)
-            .delete()
             .await()
     }
 

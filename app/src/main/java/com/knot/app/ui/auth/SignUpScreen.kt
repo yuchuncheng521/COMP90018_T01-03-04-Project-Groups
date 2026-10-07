@@ -33,25 +33,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.knot.app.R
 import com.knot.app.model.UserAccount
 import com.knot.app.ui.theme.JudsonFontFamily
-import com.knot.app.ui.theme.KnotTheme
 
-@Preview(showBackground = true)
-@Composable
-private fun SignUpScreenPreview() {
-    KnotTheme {
-        SignUpScreen(
-            viewModel = AuthViewModel(),
-            onSignUpSuccess = {},
-            onNavigateToLogin = {}
-        )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
