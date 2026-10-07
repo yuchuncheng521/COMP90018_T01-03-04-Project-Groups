@@ -476,18 +476,35 @@ private fun MediaUploadingPlaceholder(label: String, heightDp: Int) {
 
 @Composable
 private fun VideoResponsePlayer(videoUrl: String) {
-    AndroidView(
-        factory = { context ->
-            VideoView(context).apply {
-                val mediaController = MediaController(context)
-                mediaController.setAnchorView(this)
+    // The file itself is already fully uploaded by this point (that's a separate
+    // "uploading" state, shown elsewhere) -- this is just VideoView's own buffering
+    // before it has enough of the stream to start playing, which takes a few seconds
+    // over the network. Without this, that wait looked like a frozen/blank player.
+    var isPrepared by remember(videoUrl) { mutableStateOf(false) }
 
-                setMediaController(mediaController)
-                setVideoURI(Uri.parse(videoUrl))
-            }
-        },
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(220.dp)
-    )
+    ) {
+        AndroidView(
+            factory = { context ->
+                VideoView(context).apply {
+                    val mediaController = MediaController(context)
+                    mediaController.setAnchorView(this)
+
+                    setMediaController(mediaController)
+                    setOnPreparedListener { isPrepared = true }
+                    setVideoURI(Uri.parse(videoUrl))
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+        )
+
+        if (!isPrepared) {
+            MediaUploadingPlaceholder(label = "Loading video…", heightDp = 220)
+        }
+    }
 }
