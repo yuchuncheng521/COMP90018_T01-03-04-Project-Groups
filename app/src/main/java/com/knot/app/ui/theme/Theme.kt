@@ -27,6 +27,7 @@ private val LightColors = lightColorScheme(
     primaryContainer = KnotSand,
     onPrimaryContainer = KnotInk,
     secondary = KnotSage,
+    tertiary = KnotGreen,
     background = KnotCream,
     onBackground = KnotInk,
     surface = KnotCream,
@@ -34,8 +35,7 @@ private val LightColors = lightColorScheme(
     surfaceVariant = KnotSand,
     onSurfaceVariant = KnotInk,
     error = KnotRed,
-    onError = KnotCream,
-    errorContainer = KnotRed.copy(alpha = 0.15f)
+    onError = KnotCream
 )
 
 private val DarkColors = darkColorScheme(
@@ -44,6 +44,7 @@ private val DarkColors = darkColorScheme(
     primaryContainer = Color(0xFF2B2B2B),
     onPrimaryContainer = Color(0xFFFFFFFF),
     secondary = Color(0xFFAAAAAA),
+    tertiary = KnotGreenDark,
     background = Color(0xFF000000),
     onBackground = Color(0xFFFFFFFF),
     surface = Color(0xFF121212),
@@ -51,10 +52,7 @@ private val DarkColors = darkColorScheme(
     surfaceVariant = Color(0xFF222222),
     onSurfaceVariant = Color(0xFFFFFFFF),
     error = KnotRedDark,
-    onError = Color(0xFFCCCCCC),
-    //onError = Color(0xFF000000)
-            // onError = KnotInk,
-    errorContainer = KnotRedDark.copy(alpha = 0.25f)
+    onError = Color(0xFFCCCCCC)
 )
 
 private val Mono = lightColorScheme(
@@ -63,6 +61,7 @@ private val Mono = lightColorScheme(
     primaryContainer = Color(0xFFE5E5E5),
     onPrimaryContainer = Color(0xFF000000),
     secondary = Color(0xFF666666),
+    tertiary = KnotGreen,
     background = Color(0xFFFFFFFF),
     onBackground = Color(0xFF000000),
     surface = Color(0xFFFFFFFF),
@@ -70,8 +69,7 @@ private val Mono = lightColorScheme(
     surfaceVariant = Color(0xFFF0F0F0),
     onSurfaceVariant = Color(0xFF000000),
     error = KnotRed,
-    onError = KnotCream,
-    errorContainer = KnotRed.copy(alpha = 0.15f)
+    onError = KnotCream
 )
 
 @Composable

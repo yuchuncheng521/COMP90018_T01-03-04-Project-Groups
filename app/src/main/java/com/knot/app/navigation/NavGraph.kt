@@ -30,7 +30,6 @@ import com.knot.app.ui.groups.MonthDetailScreen
 import com.knot.app.ui.settings.AccountSettingsScreen
 import com.knot.app.ui.settings.AccountSettingsViewModel
 import com.knot.app.ui.settings.AppPreferencesScreen
-import com.knot.app.ui.settings.DeleteAccountScreen
 import com.knot.app.ui.settings.EditProfileScreen
 
 
@@ -140,7 +139,6 @@ private fun MainNavHost(
                 )
             ) { backStackEntry ->
                 val groupId = backStackEntry.arguments?.getString("groupId").orEmpty()
-                val groupName = backStackEntry.arguments?.getString("groupName").orEmpty()
 
                 GroupDetailScreen(
                     groupId = groupId,
@@ -225,8 +223,7 @@ private fun MainNavHost(
                     viewModel = settingsViewModel,
                     onSignedOut = onSignedOut,
                     onProfileClick = { mainNavController.navigate("editProfile") },
-                    onAppPreferencesClick = { mainNavController.navigate("appPreferences") },
-                    onDeleteAccountClick = { mainNavController.navigate("deleteAccount") }
+                    onAppPreferencesClick = { mainNavController.navigate("appPreferences") }
                 )
             }
 
@@ -241,14 +238,6 @@ private fun MainNavHost(
                 AppPreferencesScreen(
                     viewModel = settingsViewModel,
                     onBackClick = { mainNavController.popBackStack() }
-                )
-            }
-
-            composable("deleteAccount") {
-                DeleteAccountScreen(
-                    viewModel = settingsViewModel,
-                    onBackClick = { mainNavController.popBackStack() },
-                    onDeleted = { onSignedOut() }
                 )
             }
         }

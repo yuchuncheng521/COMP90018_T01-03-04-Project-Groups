@@ -41,6 +41,8 @@ data class AccountSettingsUiState(
     val isMicrophoneAllowed: Boolean = false,
     val isLocationAllowed: Boolean = false,
     val isBluetoothAllowed: Boolean = false,
+    val isEncryptionActive: Boolean = false,
+    val encryptionStatus: String = "Checking...",
     val nearbyError: String? = null,
     val avatarColorHex: String = "#C97C5D"
 )
@@ -186,35 +188,6 @@ class AccountSettingsViewModel(
         }
     }
 
-    fun updateEmail(email: String) {
-        if (email.isBlank()) return
-
-        uiState = uiState.copy(
-            isLoading = true,
-            errorMessage = null,
-            successMessage = null
-        )
-
-        viewModelScope.launch {
-            val result = repository.updateEmail(email)
-            uiState = result.fold(
-                onSuccess = {
-                    uiState.copy(
-                        isLoading = false,
-                        successMessage = "Verification email sent to $email."
-                    )
-                },
-                onFailure = {
-                    uiState.copy(
-                        isLoading = false,
-                        errorMessage = it.message
-                            ?: "Failed to update email. You may need to re-login."
-                    )
-                }
-            )
-        }
-    }
-
     fun updatePassword(password: String) {
         if (password.length < 6) {
             uiState = uiState.copy(
@@ -243,45 +216,6 @@ class AccountSettingsViewModel(
                         isLoading = false,
                         errorMessage = it.message
                             ?: "Failed to update password. You may need to re-login."
-                    )
-                }
-            )
-        }
-    }
-
-    fun deleteAccount(
-        email: String,
-        password: String,
-        onSuccess: () -> Unit
-    ) {
-        if (email.isBlank() || password.isBlank()) {
-            uiState = uiState.copy(
-                errorMessage = "Please enter both email and password to confirm."
-            )
-            return
-        }
-
-        uiState = uiState.copy(
-            isLoading = true,
-            errorMessage = null,
-            successMessage = null
-        )
-
-        viewModelScope.launch {
-            val result = repository.deleteAccount(email, password)
-            uiState = result.fold(
-                onSuccess = {
-                    onSuccess()
-                    uiState.copy(
-                        isLoading = false,
-                        successMessage = "Account deleted."
-                    )
-                },
-                onFailure = {
-                    uiState.copy(
-                        isLoading = false,
-                        errorMessage = it.message
-                            ?: "Failed to delete account. Ensure credentials are correct."
                     )
                 }
             )

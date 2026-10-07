@@ -31,9 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
@@ -69,25 +67,17 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.knot.app.R
 import com.knot.app.permissions.PermissionManager
-import com.knot.app.ui.theme.KnotCream
-import com.knot.app.ui.theme.KnotGreen
-import com.knot.app.ui.theme.KnotGreenDark
-import com.knot.app.ui.theme.KnotRed
-import com.knot.app.ui.theme.KnotRedDark
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountSettingsScreen(
     viewModel: AccountSettingsViewModel,
     onSignedOut: () -> Unit,
     onProfileClick: () -> Unit,
-    onAppPreferencesClick: () -> Unit,
-    onDeleteAccountClick: () -> Unit,
+    onAppPreferencesClick: () -> Unit
 ) {
     val uiState = viewModel.uiState
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val isDark = MaterialTheme.colorScheme.background != KnotCream
 
     // TODO: confirm with whoever wrote checkPermissions() whether this overlaps with
     // the defensive checks below — kept both since checkPermissions() likely feeds the
@@ -219,9 +209,7 @@ fun AccountSettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            // NOTE: no .verticalScroll() here on purpose — LazyColumn already scrolls
-            // internally. Adding one on top of the other crashes at runtime.
+                .padding(padding)
         ) {
             item {
                 ProfileHeader(
@@ -347,23 +335,6 @@ fun AccountSettingsScreen(
             }
 
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
-            item { SectionLabel("PRIVACY") }
-            item {
-                // TODO: check if e2e is enabled, if (true) green else red
-                val greenColor = if (isDark) KnotGreenDark else KnotGreen
-                val redColor = if (isDark) KnotRedDark else KnotRed
-
-                SettingsInfoRow(
-                    icon = Icons.Filled.Lock,
-                    title = "End-to-end encryption",
-                    subtitle = "Only your circle can read this content",
-                    value = "Enabled",
-                    valueColor = greenColor
-                        //if (isE2eeEnabled) greenColor else redColor
-                )
-            }
-
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
             item { SectionLabel("SENSORS & PERMISSIONS") }
             item {
                 SettingsStatusRow(
@@ -401,14 +372,11 @@ fun AccountSettingsScreen(
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) }
             item { SectionLabel("CONNECTIVITY & STORAGE") }
             item {
-                val greenColor = if (isDark) KnotGreenDark else KnotGreen
-                val redColor = if (isDark) KnotRedDark else KnotRed
-
                 SettingsInfoRow(
                     icon = Icons.Filled.Sync,
                     title = "Sync Status",
                     value = uiState.syncStatus,
-                    valueColor = if (uiState.syncStatus == "Up to date") greenColor else redColor
+                    valueColor = if (uiState.syncStatus == "Up to date") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                 )
             }
             item {
@@ -450,18 +418,6 @@ fun AccountSettingsScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Text("Log out", modifier = Modifier.padding(start = 8.dp))
-                    }
-
-                    Button(
-                        onClick = onDeleteAccountClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = KnotRed,
-                            contentColor = KnotCream
-                        ),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Text("Delete Account")
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -562,15 +518,11 @@ private fun SettingsStatusRow(
             Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
         }
-        val isDark = MaterialTheme.colorScheme.background != KnotCream
-        val greenColor = if (isDark) KnotGreenDark else KnotGreen
-        val redColor = if (isDark) KnotRedDark else KnotRed
-
         Text(
             text = if (isAllowed) "Allowed" else "Not allowed",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isAllowed) greenColor else redColor
+            color = if (isAllowed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
         )
     }
 }
@@ -667,8 +619,6 @@ private fun ProfileHeader(displayName: String, email: String, avatarColorHex: St
             )
         }
         Column(modifier = Modifier.padding(start = 16.dp).weight(1f)) {
-            // Duplicate Text(displayName, ...) removed here — it appeared twice in a
-            // row in the pre-merge file, unrelated to either branch's actual changes.
             Text(text = displayName, style = MaterialTheme.typography.titleLarge)
             Text(
                 text = email.ifBlank { "No email on file" },

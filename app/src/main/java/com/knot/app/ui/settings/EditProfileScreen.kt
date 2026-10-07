@@ -34,7 +34,6 @@ fun EditProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var displayName by remember { mutableStateOf(uiState.account.displayName) }
-    var email by remember { mutableStateOf(uiState.account.email) }
     var password by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -144,19 +143,6 @@ fun EditProfileScreen(
                     )
                 )
 
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email Address") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                    )
-                )
-
                 Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(8.dp))
@@ -204,7 +190,6 @@ fun EditProfileScreen(
                     Button(
                         onClick = {
                             if (displayName != uiState.account.displayName) viewModel.updateDisplayName(displayName)
-                            if (email != uiState.account.email) viewModel.updateEmail(email)
                             if (password.isNotEmpty()) viewModel.updatePassword(password)
                         },
                         modifier = Modifier
