@@ -6,14 +6,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.knot.app.KnotApplication
 import com.knot.app.data.ActivitiesRepository
+import com.knot.app.data.UploadResponseMediaWorker
 import com.knot.app.model.ActivityItem
 import com.knot.app.model.ActivityStatus
 import com.knot.app.model.ActivityType
 import kotlinx.coroutines.launch
 import com.google.firebase.auth.FirebaseAuth
 import com.knot.app.crypto.GroupKeyManager
+import java.util.concurrent.TimeUnit
 
 data class P2pGroupOption(
     val groupId: String,
@@ -101,24 +109,36 @@ class ActivitiesViewModel(
             val persistedActivityId = activity?.id ?: activityId
             val myUid = FirebaseAuth.getInstance().currentUser?.uid
 
+            // Text encryption is unchanged: encrypted here, saved as ciphertext.
             val textToSave = if (activity != null && myUid != null && text.isNotBlank()) {
                 GroupKeyManager.encryptText(getApplication(), activity.groupId, myUid, text) ?: text
             } else {
                 text
             }
 
+            val groupId = activity?.groupId ?: ""
+            val hasMedia = photoPath != null || videoPath != null || audioPath != null
+
+            // Step 1: text first. No upload happens here, so it can't wait on a big file.
             val result = repository.saveActivityResponse(
-                context = getApplication(),
                 activityId = persistedActivityId,
-                groupId = activity?.groupId ?: "",
+                groupId = groupId,
                 text = textToSave,
-                photoPath = photoPath,
-                videoPath = videoPath,
-                audioPath = audioPath,
+                hasMedia = hasMedia,
                 location = location
             )
 
-            if (result.isSuccess) {
+            val responseId = result.getOrNull()
+            if (responseId != null) {
+                // Step 2: media afterwards, in the background (UploadResponseMediaWorker).
+//                android.util.Log.d("PriorityTest", "TEXT SAVED  ${System.currentTimeMillis()}")
+                if (hasMedia) {
+                    enqueueMediaUpload(
+                        responseId, groupId, persistedActivityId,
+                        photoPath, videoPath, audioPath
+                    )
+                }
+
                 val refreshedActivities = repository.getActivities()
                 uiState = uiState.copy(
                     isLoading = false,
@@ -130,6 +150,36 @@ class ActivitiesViewModel(
                 uiState = uiState.copy(isLoading = false)
             }
         }
+    }
+
+    private fun enqueueMediaUpload(
+        responseId: String,
+        groupId: String,
+        activityId: String,
+        photoPath: String?,
+        videoPath: String?,
+        audioPath: String?
+    ) {
+        val request = OneTimeWorkRequestBuilder<UploadResponseMediaWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .setInputData(
+                workDataOf(
+                    "responseId" to responseId,
+                    "groupId" to groupId,
+                    "activityId" to activityId,
+                    "photoPath" to photoPath,
+                    "videoPath" to videoPath,
+                    "audioPath" to audioPath
+                )
+            )
+            .build()
+
+        WorkManager.getInstance(getApplication()).enqueue(request)
     }
 
     fun selectP2pGroup(groupId: String): ActivityItem? {

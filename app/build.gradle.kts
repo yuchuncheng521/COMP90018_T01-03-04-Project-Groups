@@ -64,6 +64,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.animation:animation")
 
+    // Work Manager
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
 

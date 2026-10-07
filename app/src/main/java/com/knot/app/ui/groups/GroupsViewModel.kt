@@ -10,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.knot.app.crypto.GroupKeyManager
 import com.knot.app.data.GroupsRepository
 import com.knot.app.model.Group
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 enum class JoinOrCreateMode { CREATE, JOIN }
@@ -38,34 +39,51 @@ class GroupsViewModel @JvmOverloads constructor(
 
     val currentUserId: String get() = auth.currentUser?.uid ?: ""
 
+    private var observeJob: Job? = null
+
     init {
         loadGroups()
     }
 
+    /**
+     * The groups list is live (a listener updates it when a member joins/leaves, a group is
+     * created or deleted, etc.). Avatar colours/names are refreshed every time this is
+     * called -- the screen calls it each time you open it -- so a colour or name changed in
+     * Settings shows up when you come back to Groups, as it did before the listener.
+     */
     fun loadGroups() {
+        if (observeJob?.isActive == true) {
+            // Listener already running: just refresh the avatars (the old "refresh on entry").
+            refreshAvatars(uiState.groups.flatMap { it.memberIds }.distinct())
+            return
+        }
+
         uiState = uiState.copy(isLoading = true)
-        viewModelScope.launch {
-            val groups = repository.getGroups()
-            uiState = uiState.copy(isLoading = false, groups = groups)
+        observeJob = viewModelScope.launch {
+            repository.observeGroups().collect { groups ->
+                uiState = uiState.copy(isLoading = false, groups = groups)
 
-            val allMemberIds = groups.flatMap { it.memberIds }.distinct()
-            if (allMemberIds.isNotEmpty()) {
-                launch {
-                    val info = repository.getMemberAvatarInfo(allMemberIds)
-                    uiState = uiState.copy(memberAvatarInfo = info)
-                }
-            }
+                refreshAvatars(groups.flatMap { it.memberIds }.distinct())
 
-            val myUid = auth.currentUser?.uid ?: return@launch
-            groups.filter { it.ownerId == myUid }.forEach { group ->
-                launch {
-                    runCatching {
-                        GroupKeyManager.syncMissingMemberKeys(
-                            getApplication(), group.id, group.memberIds, myUid
-                        )
+                val myUid = auth.currentUser?.uid ?: return@collect
+                groups.filter { it.ownerId == myUid }.forEach { group ->
+                    launch {
+                        runCatching {
+                            GroupKeyManager.syncMissingMemberKeys(
+                                getApplication(), group.id, group.memberIds, myUid
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+
+    private fun refreshAvatars(memberIds: List<String>) {
+        if (memberIds.isEmpty()) return
+        viewModelScope.launch {
+            val info = repository.getMemberAvatarInfo(memberIds)
+            uiState = uiState.copy(memberAvatarInfo = info)
         }
     }
 
@@ -96,7 +114,7 @@ class GroupsViewModel @JvmOverloads constructor(
                         isSubmittingJoinOrCreate = false,
                         isJoinOrCreateSheetOpen = false,
                         justCreatedGroup = group,
-                        groups = uiState.groups + group
+                        groups = withGroup(uiState.groups, group)
                     )
                 },
                 onFailure = { uiState.copy(isSubmittingJoinOrCreate = false, joinOrCreateError = it.message ?: "Couldn't create the group. Please try again.") }
@@ -114,12 +132,24 @@ class GroupsViewModel @JvmOverloads constructor(
             val result = repository.joinGroupByCode(code)
             uiState = result.fold(
                 onSuccess = { group ->
-                    uiState.copy(isSubmittingJoinOrCreate = false, isJoinOrCreateSheetOpen = false, groups = uiState.groups + group)
+                    uiState.copy(
+                        isSubmittingJoinOrCreate = false,
+                        isJoinOrCreateSheetOpen = false,
+                        groups = withGroup(uiState.groups, group)
+                    )
                 },
                 onFailure = { uiState.copy(isSubmittingJoinOrCreate = false, joinOrCreateError = it.message ?: "Couldn't join that group. Please check the code and try again.") }
             )
         }
     }
+
+    /**
+     * The listener usually adds a new group to the list before the create/join call
+     * returns, so adding it again here would show it twice (and crash the LazyColumn,
+     * which keys items by group id). Only add it if it isn't already there.
+     */
+    private fun withGroup(groups: List<Group>, group: Group): List<Group> =
+        if (groups.any { it.id == group.id }) groups else groups + group
 
     fun dismissJustCreatedBanner() {
         uiState = uiState.copy(justCreatedGroup = null)
