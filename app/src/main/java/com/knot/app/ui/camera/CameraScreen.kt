@@ -83,7 +83,13 @@ fun CameraScreen(
     }
     val recorder = remember {
         Recorder.Builder()
-            .setQualitySelector(QualitySelector.from(Quality.HD))
+            // Was Quality.HD. Activity response videos are a few seconds long but HD
+            // still produces a multi-MB file with no compression before upload
+            // (see ActivitiesRepository.uploadFile), which made the upload -- and so
+            // the time before the clip shows up in the Timeline -- noticeably slow,
+            // especially on typical mobile upload speeds. SD cuts the file size a
+            // lot for a small quality trade-off.
+            .setQualitySelector(QualitySelector.from(Quality.SD))
             .build()
     }
     val videoCapture = remember { VideoCapture.withOutput(recorder) }

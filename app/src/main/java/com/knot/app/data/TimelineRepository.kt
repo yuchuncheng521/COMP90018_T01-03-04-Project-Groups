@@ -110,6 +110,7 @@ import kotlinx.coroutines.flow.map
                     ?: return@forEach
 
                 val locationText = response.getString("location").orEmpty()
+                val mediaStatus = response.getString("mediaStatus").orEmpty()
 
                 // TEXT
                 val textCiphertext = response.getString("text").orEmpty()
@@ -141,6 +142,7 @@ import kotlinx.coroutines.flow.map
 
                 // PHOTO
                 val photoCiphertext = response.getString("photoUrl").orEmpty()
+                val hasPhoto = response.getBoolean("hasPhoto") ?: false
 
                 if (photoCiphertext.isNotBlank()) {
                     val decryptedPhotoUrl = GroupKeyManager.decryptText(
@@ -166,10 +168,29 @@ import kotlinx.coroutines.flow.map
                             createdAt = timestamp
                         )
                     }
+                } else if (hasPhoto && mediaStatus == "uploading") {
+                    // UploadResponseMediaWorker hasn't attached photoUrl yet. Same id the
+                    // real entry will use once it's ready, so the LazyColumn (keyed by
+                    // memory.id) swaps this placeholder for the real one instead of
+                    // showing both.
+                    memories += Memory(
+                        id = "${response.id}_photo",
+                        groupId = groupId,
+                        authorId = authorId,
+                        authorName = authorName,
+                        activityId = sharedActivityId,
+                        activityTitle = activityTitle,
+                        activityCreatedAt = activityCreatedAt,
+                        type = MemoryType.PHOTO,
+                        locationText = locationText,
+                        createdAt = timestamp,
+                        isUploading = true
+                    )
                 }
 
                 // VIDEO
                 val videoCiphertext = response.getString("videoUrl").orEmpty()
+                val hasVideo = response.getBoolean("hasVideo") ?: false
 
                 if (videoCiphertext.isNotBlank()) {
                     val decryptedVideoUrl = GroupKeyManager.decryptText(
@@ -195,10 +216,27 @@ import kotlinx.coroutines.flow.map
                             createdAt = timestamp
                         )
                     }
+                } else if (hasVideo && mediaStatus == "uploading") {
+                    // Same reasoning as the photo placeholder above -- videos are the
+                    // slowest to upload, so this is the one that matters most.
+                    memories += Memory(
+                        id = "${response.id}_video",
+                        groupId = groupId,
+                        authorId = authorId,
+                        authorName = authorName,
+                        activityId = sharedActivityId,
+                        activityTitle = activityTitle,
+                        activityCreatedAt = activityCreatedAt,
+                        type = MemoryType.VIDEO,
+                        locationText = locationText,
+                        createdAt = timestamp,
+                        isUploading = true
+                    )
                 }
 
                 // AUDIO
                 val audioCiphertext = response.getString("audioUrl").orEmpty()
+                val hasAudio = response.getBoolean("hasAudio") ?: false
 
                 if (audioCiphertext.isNotBlank()) {
                     val decryptedAudioUrl = GroupKeyManager.decryptText(
@@ -224,6 +262,20 @@ import kotlinx.coroutines.flow.map
                             createdAt = timestamp
                         )
                     }
+                } else if (hasAudio && mediaStatus == "uploading") {
+                    memories += Memory(
+                        id = "${response.id}_audio",
+                        groupId = groupId,
+                        authorId = authorId,
+                        authorName = authorName,
+                        activityId = sharedActivityId,
+                        activityTitle = activityTitle,
+                        activityCreatedAt = activityCreatedAt,
+                        type = MemoryType.AUDIO,
+                        locationText = locationText,
+                        createdAt = timestamp,
+                        isUploading = true
+                    )
                 }
             }
 
