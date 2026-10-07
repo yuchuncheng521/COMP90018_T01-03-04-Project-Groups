@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
+import android.view.View
 import android.widget.MediaController
 import android.widget.Toast
 import android.widget.VideoView
@@ -521,7 +522,11 @@ private fun VideoResponsePlayer(videoUrl: String) {
                     setMediaController(mediaController)
                     setOnPreparedListener { isPrepared = true }
                     setVideoURI(Uri.parse(videoUrl))
+                    visibility = View.INVISIBLE
                 }
+            },
+            update = { view ->
+                view.visibility = if (isPrepared) View.VISIBLE else View.INVISIBLE
             },
             modifier = Modifier
                 .fillMaxWidth()
