@@ -1,15 +1,12 @@
 package com.knot.app.ui.groups
 
-import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
-import android.view.View
 import android.widget.MediaController
 import android.widget.Toast
 import android.widget.VideoView
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,10 +22,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -69,8 +67,6 @@ import com.knot.app.ui.theme.KnotTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 
 @Preview(showBackground = true)
@@ -483,71 +479,50 @@ private fun MediaUploadingPlaceholder(label: String, heightDp: Int) {
 
 @Composable
 private fun VideoResponsePlayer(videoUrl: String) {
-    // The file itself is already fully uploaded by this point (that's a separate
-    // "uploading" state, shown elsewhere) -- this is just VideoView's own buffering
-    // before it has enough of the stream to start playing, which takes a few seconds
-    // over the network. Without this, that wait looked like a frozen/blank player.
+    // Simple tap-to-play: nothing about the video (not even VideoView's own
+    // buffering) starts until the user taps it. Before, every video card in the
+    // Timeline started buffering its stream the moment it scrolled into view, so
+    // several videos ended up fighting each other for bandwidth at once -- that
+    // was the actual cause of videos being slow to show up, not any one piece of
+    // UI. Only the video someone actually taps ever touches the network now.
+    var isPlaying by remember(videoUrl) { mutableStateOf(false) }
+    // Tapping play still has to wait for VideoView to buffer enough of the file
+    // to start -- that's a few seconds over the network, same as before, just
+    // now it only happens for the one video someone taps instead of every video
+    // on screen at once. This just covers that wait with a spinner instead of a
+    // blank/black surface.
     var isPrepared by remember(videoUrl) { mutableStateOf(false) }
-    var thumbnail by remember(videoUrl) { mutableStateOf<Bitmap?>(null) }
-
-    // Pulls a frame straight from the already-uploaded video (no extra download
-    // step, no new dependency) so there's a real picture to look at instead of a
-    // black rectangle while VideoView buffers. Best-effort: if this fails for any
-    // reason, the plain loading placeholder below still covers it.
-    LaunchedEffect(videoUrl) {
-        thumbnail = withContext(Dispatchers.IO) {
-            val retriever = MediaMetadataRetriever()
-            try {
-                retriever.setDataSource(videoUrl, HashMap<String, String>())
-                retriever.getFrameAtTime(0L)
-            } catch (e: Exception) {
-                null
-            } finally {
-                retriever.release()
-            }
-        }
-    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(220.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
     ) {
-        AndroidView(
-            factory = { context ->
-                VideoView(context).apply {
-                    val mediaController = MediaController(context)
-                    mediaController.setAnchorView(this)
+        if (isPlaying) {
+            AndroidView(
+                factory = { context ->
+                    VideoView(context).apply {
+                        val mediaController = MediaController(context)
+                        mediaController.setAnchorView(this)
 
-                    setMediaController(mediaController)
-                    setOnPreparedListener { isPrepared = true }
-                    setVideoURI(Uri.parse(videoUrl))
-                    visibility = View.INVISIBLE
-                }
-            },
-            update = { view ->
-                view.visibility = if (isPrepared) View.VISIBLE else View.INVISIBLE
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-        )
+                        setMediaController(mediaController)
+                        setOnPreparedListener {
+                            isPrepared = true
+                            start()
+                        }
+                        setVideoURI(Uri.parse(videoUrl))
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+            )
 
-        if (!isPrepared) {
-            val frame = thumbnail
-            if (frame != null) {
-                Image(
-                    bitmap = frame.asImageBitmap(),
-                    contentDescription = "Video preview",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    contentScale = ContentScale.Crop
-                )
+            if (!isPrepared) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp)
+                        .fillMaxSize()
                         .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.25f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -556,8 +531,27 @@ private fun VideoResponsePlayer(videoUrl: String) {
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-            } else {
-                MediaUploadingPlaceholder(label = "Loading video…", heightDp = 220)
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { isPlaying = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "Play video",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
         }
     }
