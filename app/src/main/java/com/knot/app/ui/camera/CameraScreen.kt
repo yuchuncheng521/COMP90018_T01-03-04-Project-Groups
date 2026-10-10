@@ -11,6 +11,7 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
@@ -89,7 +90,21 @@ fun CameraScreen(
             // the time before the clip shows up in the Timeline -- noticeably slow,
             // especially on typical mobile upload speeds. SD cuts the file size a
             // lot for a small quality trade-off.
-            .setQualitySelector(QualitySelector.from(Quality.SD))
+            //
+            // QualitySelector.from(Quality.SD) (no fallback) throws inside
+            // bindToLifecycle on any device/emulator whose camera doesn't report SD
+            // as a supported recording quality, and that throw was being swallowed by
+            // the try/catch around bindToLifecycle below -- so the screen rendered
+            // normally but the preview stayed permanently black and nothing could be
+            // captured. fromOrderedList + a fallback strategy keeps the SD preference
+            // where it's supported, but falls back to the closest quality the device
+            // actually supports instead of failing to bind at all.
+            .setQualitySelector(
+                QualitySelector.fromOrderedList(
+                    listOf(Quality.SD, Quality.HD, Quality.FHD),
+                    FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
+                )
+            )
             .build()
     }
     val videoCapture = remember { VideoCapture.withOutput(recorder) }
